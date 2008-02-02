@@ -19,28 +19,32 @@ require_once($CFG->dirroot.'/question/type/edit_question_form.php');
  */
 class question_edit_ltjprocessed_form extends question_edit_form {
   function definition_inner(&$mform) {
-    // TODO: the order of the elements in this form are not 'correct'.  
-    //       we need to figure out how to fix that.
     // TODO: The general formatting of the form needs work.  E.g. the 
     //       variables and server selection don't line up like they should
 
+    // create these two elements, then insert them before the question text
     // Select server element
-    $mform->addElement('select', 'serverid', 
-		       get_string('ltj_server', 'qtype_ltjprocessed'), 
-		       installed_server_choices());
+    $server_select = 
+      $mform->createElement('select', 'serverid', 
+			    get_string('ltj_server', 'qtype_ltjprocessed'), 
+			    installed_server_choices());
     $mform->setType('serverid', PARAM_INT);
-    $mform->addRule('serverid', null, 'required', null, 'client');
+    $mform->addRule('serverid', null, 'required', null, 'client' );
 
     // variables element 
     $lbl   = get_string('ltj_variables', 'qtype_ltjprocessed');
     $attrs = array('rows'      => 4, 
 		   'cols'      => 60,
 		   'maxlength' => 1024);
-    $mform->addElement('textarea', 'variables', $lbl, $attrs);
+    $variable_element = 
+      $mform->createElement('textarea', 'variables', $lbl, $attrs);
     $mform->addRule('variables', 'Maxlength 1024 characters', 'maxlength', 
 		    1024, 'client');
     $mform->setType('variables', PARAM_RAW);
 
+    // insert them *before* questiontext
+    $mform->insertElementBefore($variable_element, 'questiontext');
+    $mform->insertElementBefore($server_select, 'variables');
     ///////////////////////////////////////////////////////////////
     // Answer elements.  Using repeated form so we can do more later, 
     // but only one will be presented for now
