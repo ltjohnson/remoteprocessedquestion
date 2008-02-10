@@ -33,6 +33,8 @@ class ltjprocessed_server_edit_form extends moodleform {
 	$mform->addElement('text', 'serverurl', get_string('ltj_serverurl', 'qtype_ltjprocessed'));
 	$mform->addRule('serverurl', get_string('ltj_missingserverurl', 'qtype_ltjprocessed'), 'required', null, 'client');
         $mform->setType('serverurl', PARAM_RAW);
+		$mform->addElement('hidden', 'id');
+		$mform->setType('id', PARAM_INT);
         
         $this->add_action_buttons();
     }
@@ -98,19 +100,4 @@ if ($mform->is_cancelled()){
     print_footer();
 }
 
-/**
- * Save a list of servers of a given type in the question_opaque_servers table.
- * 
- * @param array $urls an array of URLs.
- * @param string $type 'qe' or 'qb'.
- */
-function store_servers($urls, $type, $engineid) {
-    foreach ($urls as $url) {
-        $server = new stdClass;
-        $server->engineid = $engineid;
-        $server->type = $type;
-        $server->url = $url;
-        insert_record('question_opaque_servers', $server, false);
-    }   
-}
 ?>
