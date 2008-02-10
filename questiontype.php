@@ -194,54 +194,58 @@ class ltjprocessed_qtype extends default_questiontype
     if (!$server) {
       return "";
     }
-    // Create url
-    $url = $server->serverurl;
-    $urlvars = "submit=Process".
-      "&questiontext=" . urlencode($question->questiontext) .
-      "&variables=" . urlencode($question->options->variables) .
-      "&numanswers=" . urlencode(count($question->options->answers));
-    $key = 0;
-    foreach ($question->options->answers as $answer) {
-      $idx = "[" . $key . "]";
-      $urlvars = $urlvars . 
-	"&answer" . $idx . "=" . urlencode($answer->answer) .
-	"&tolerance" . $idx . "=" . 
-	(isset($answer->tolerance) ? urlencode($answer->tolerance) : "0.0") .
-	"&ansid" . $idx . "=" . urlencode($answer->id);
-      $key++;
-    }
-    // have the remote server proess the request
-    $res = get_post_url_contents($url, $urlvars);
-    $xml_data = simplexml_load_string($res);
+    // convert question into request vars
+	$request = array();
+	$request['variables']    = $question->options->variables;
+	$request['questiontext'] = $question->questiontext;
+	$request['numanswers']   = count($question->options->answers);
+	$request['answers']      = array();
+	foreach($question->options->answers as $answer) {
+		$ans = array();
+		$ans['ansid']     = $answer->id;
+		$ans['answer']    = $answer->answer;
+		$ans['tolerance'] = $answer->tolerance;
+		array_push($request['answers'], $ans);
+	}
 
-    $ret = new stdClass;
-    // now load the results
-    if (isset($xml_data->questiontext) && trim($xml_data->questiontext) != '') {
-      $ret->questiontext = trim($xml_data->questiontext);
-    }
+    $url    = $server->serverurl;
+	$method = 'processquestion';
 
+	$processed = xmlrpc_request($url, $method, $request);
+	if (array_key_exists('faultCode', $processed)) {
+		echo "Error processing question: faultCode[". $processed['faultCode'];
+		echo "], faultString[".$processed['faultString']."]</br>\n";
+		return NULL; 
+	}
+	// post process variables, mainly to make sure we don't end up with 
+	// something completely bogus
+	$ret = new stdClass;
+	if (isset($processed['questiontext']) && 
+	    trim($processed['questiontext']) != '') {
+		$ret->questiontext = $processed['questiontext'];
+	}
     $ansno = 0;
     $ret->answers = array();
-    for($i = 0; $i < $xml_data->numanswers; $i++) {
-      $answer = new stdClass;
-      if (isset($xml_data->answer[$i]) && trim($xml_data->answer[$i]) != '') {
-	$answer->answer = trim($xml_data->answer[$i]);
-      } else {
-	$answer->answer = "0";
-      }
-      if (isset($xml_data->tolerance[$i]) && trim($xml_data->tolerance[$i]) != '') {
-	$answer->tolerance = trim($xml_data->tolerance[$i]);
-      } else {
-	$answer->tolerance = "0.0";
-      }
-      if (isset($xml_data->answerid[$i])) {
-	$answer->id = intval($xml_data->answerid[$i]);
-      } else {
-	$answer->id = 0;
-      }
+	foreach($processed['answers'] as $ans) {
+		$answer = new stdClass;
+		if (isset($ans['answer']) && trim($ans['answer']) != '') {
+			$answer->answer = $ans['answer'];
+		} else {
+			$answer->answer = "0";
+		}
+		if (isset($ans['tolerance']) && trim($ans['tolerance']) != '') {
+			$answer->tolerance = $ans['tolerance'];
+		} else {
+			$answer->tolerance = "0";
+		}
+		if (isset($ans['ansid']) && trim($ans['ansid']) != '') {
+			$answer->id = $ans['ansid'];
+		} else {
+			$answer->id = 0;
+		}
       array_push($ret->answers, $answer);
-    }
-    $ret->numanswers = $xml_data->numanswers;
+	}
+
     return $ret;
   }
 
@@ -249,10 +253,10 @@ class ltjprocessed_qtype extends default_questiontype
     global $QTYPES;
     // remote process the question
     $newq = $QTYPES[$question->qtype]->process_question($question);
-    if (isset($newq->questiontext)) {
+    if ($newq != NULL && isset($newq->questiontext)) {
       $question->questiontext = $newq->questiontext;
     }
-    if (isset($newq->numanswers)) {
+    if ($newq != NULL && isset($newq->numanswers)) {
       // let's not be clever here, just try to match them up.
       // sort each by id
       usort($question->options->answers, "cmp_id");
