@@ -246,6 +246,7 @@ class ltjprocessed_qtype extends default_questiontype
       array_push($ret->answers, $answer);
 	}
 
+    $ret->numanswers = count($ret->answers);
     return $ret;
   }
 
