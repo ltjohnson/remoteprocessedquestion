@@ -92,7 +92,6 @@ function do_rpc_call($url, $request) {
  */
 function xmlrpc_request($server, $method, $args) {
 	$request = xmlrpc_encode_request($method, $args);
-	echo "xml request[".$request."]</br>";
 	$xml     = do_rpc_call($server, $request);
 	$phpvars = xmlrpc_decode($xml);
 	return $phpvars;
