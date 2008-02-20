@@ -536,8 +536,7 @@ class ltjprocessed_qtype extends default_questiontype
     // this situation.  It might be a good idea to make a separate method to generate
     // that xml
     
-    $varsml = $doc->createElement('variables');
-    $varsml->appendChild($doc->createElement('text', $question->options->variables));
+    $varsml = $doc->createElement('variables', $question->options->variables);
     $tree->appendChild($varsml);
 
     // TODO: add any extra/new options here
