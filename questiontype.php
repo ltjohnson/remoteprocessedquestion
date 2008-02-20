@@ -13,6 +13,7 @@
  *
  * TODO give an overview of how the class works here.
  */
+$ltj_tbl = 'question_ltjprocessed';
 require_once(dirname(__FILE__) . '/locallib.php');
 class ltjprocessed_qtype extends default_questiontype
 {
@@ -479,15 +480,15 @@ class ltjprocessed_qtype extends default_questiontype
     return empty($ret) ? null : $ret;
   }
 
-  /**
+  /**************************************************************
    * Backup the data in the question
    *
    * This is used in question/backuplib.php
    */
   function backup($bf,$preferences,$question,$level=6) {
     $status = true;
-
-    // TODO write code to backup an instance of your question type.
+    
+    // TODO write code to restore an instance of your question type.
 
     return $status;
   }
@@ -499,10 +500,95 @@ class ltjprocessed_qtype extends default_questiontype
    */
   function restore($old_question_id,$new_question_id,$info,$restore) {
     $status = true;
-
+    
     // TODO write code to restore an instance of your question type.
 
     return $status;
+  }
+  /**
+   * Provide export functionality for xml format
+   * @param question object the question object
+   * @param format object the format object so that helper methods can be used 
+   * @param extra mixed any additional format specific data that may be passed by the 
+   *              format (see format code for info)
+   * @return string the data to append to the output buffer or false if error
+   */
+  function export_to_xml( $question, $format, $extra=null ) {
+    // To use the xml stuff, you need to make an entire document, but you can print
+    // only the nodes you want, so it's not a big deal
+    
+    $doc = new DOMDocument();
+    $tree = $doc->createElement('ltjprocessed');
+    $tree->setAttribute("type", $this->name());
+    $doc->appendChild($tree);
+
+    // Now append all of the question info. We attempt to obey the moodle xml 
+    // format as much as possible
+    //
+    // NOTE: Moodle prints the basic question info that's part of all questions,
+    //       so we just need to print our own stuff + answers
+    $serverml = $this->make_server_xml($doc, $question->options->serverid);
+    if ($serverml) {
+      $tree->appendChild($serverml);
+    }
+
+    // TODO: append server name and url too, it never hurts to be redundant in 
+    // this situation.  It might be a good idea to make a separate method to generate
+    // that xml
+    
+    $varsml = $doc->createElement('variables');
+    $varsml->appendChild($doc->createElement('text', $question->options->variables));
+    $tree->appendChild($varsml);
+
+    // TODO: add any extra/new options here
+    
+    $answersml = $doc->createElement("answers");
+    $tree->appendChild($answersml);
+    foreach($question->options->answers as $answer) {
+      $answersml->appendChild($this->make_answer_xml($doc, $answer));
+    }
+
+    return $doc->saveXML($tree); // return just our node
+  }
+
+  /*
+   * make_answer_xml 
+   * @param doc    -- the document element (class DOMDocument) used to generate the 
+   *                  nodes
+   * @param answer -- the answer to turn into an xml node
+   * @return a XMLelement as created by $doc->createElement
+   */
+  function make_answer_xml($doc, $answer) {
+    $ansml = $doc->createElement('answer');
+    
+    $ansml->appendChild($doc->createElement('answer', $answer->answer));
+    $ansml->appendChild($doc->createElement('fraction', $answer->fraction));
+    $ansml->appendChild($doc->createElement('feedback', $answer->fraction));
+    $ansml->appendChild($doc->createElement('tolerance', $answer->tolerance));
+    $ansml->appendChild($doc->createElement('remotegrade', $answer->remotegrade));
+    
+    return $ansml;
+  }
+
+  /*
+   * make_server_xml 
+   * @param doc      -- the document element (class DOMDocument) used to generate the 
+   *                    nodes
+   * @param serverid -- the id of the server to turn into xml
+   * @return a XMLelement as created by $doc->createElement
+   */
+  function make_server_xml($doc, $serverid) {
+    $server = get_record("question_ltjprocessed_servers", "id", $serverid);
+    if (!$server) {
+      return NULL;
+    }
+    
+    $serverml = $doc->createElement('server');
+    $serverml->appendChild($doc->createElement('id', $server->id));
+    $serverml->appendChild($doc->createElement('servername', $server->servername));
+    $serverml->appendChild($doc->createElement('serverurl', $server->serverurl));
+    
+    return $serverml;
   }
 }
 // Register this question type with the system.
