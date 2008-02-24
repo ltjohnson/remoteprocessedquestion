@@ -46,6 +46,12 @@ class question_edit_ltjprocessed_form extends question_edit_form {
     $mform->insertElementBefore($variable_element, 'questiontext');
     $mform->insertElementBefore($server_select, 'variables');
     ///////////////////////////////////////////////////////////////
+	// This goes at the bottom by the answers, but it's not a repeated
+	// element cause it's a question level option
+    $mform->addElement('checkbox', 'remotegrade', get_string('ltj_remotegrade', 
+	                   'qtype_ltjprocessed'));
+
+    ///////////////////////////////////////////////////////////////
     // Answer elements.  Using repeated form so we can do more later, 
     // but only one will be presented for now
     $creategrades = get_grade_options();
@@ -63,9 +69,6 @@ class question_edit_ltjprocessed_form extends question_edit_form {
     $repeated[] =& $mform->createElement('select', 'fraction', 
 					 get_string('grade'), $gradeoptions);
     $repeatedoptions['fraction']['default'] = 0;
-    $repeated[] =& $mform->createElement('checkbox', 'remotegrade', 
-					 get_string('ltj_remotegrade', 
-						    'qtype_ltjprocessed'));
 	
     if (isset($this->question->options) && 
 	isset($this->question->options->answers)) {
@@ -84,6 +87,7 @@ class question_edit_ltjprocessed_form extends question_edit_form {
   function set_data($question) {
     if (!empty($question->options)) {
       $question->serverid    = $question->options->serverid;
+      $question->remotegrade = $question->options->remotegrade;
       $question->variables   = $question->options->variables;
       $question->answers     = $question->options->answers;
       // load answers and associated extras here
@@ -94,7 +98,6 @@ class question_edit_ltjprocessed_form extends question_edit_form {
 	$apd = '['.$key.']';
 	$default['answer'.$apd]      = $answer->answer;
 	$default['tolerance'.$apd]   = $answer->tolerance;
-	$default['remotegrade'.$apd] = $answer->remotegrade;
 	$default['fraction'.$apd]    = $answer->fraction;
 	$default['feedback'.$apd]    = $answer->feedback;
 	$key++;

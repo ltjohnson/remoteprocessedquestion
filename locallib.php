@@ -76,6 +76,8 @@ function do_rpc_call($url, $request) {
 
 	$data = curl_exec($crl);
 	if (curl_errno($crl)) {
+		echo "RECEIVED curl_errno: ". curl_errno($crl) .": ". curl_error($crl)."</br>";
+		curl_close($crl);
 	} else {
 		curl_close($crl);
 		$xml = substr($data, strpos($data, "<methodResponse>"));

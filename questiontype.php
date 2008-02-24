@@ -46,10 +46,8 @@ class ltjprocessed_qtype extends default_questiontype
       $extra = get_record($ltj_ans_tbl, 'answer', $answer->id);
       if ($extra) {
 	$answer->tolerance   = $extra->tolerance;
-	$answer->remotegrade = $extra->remotegrade;
       } else {
 	$answer->tolerance   = "0.0";
-	$answer->remotegrade = 0;
       }
     }
     $question->options->answers = $answers;
@@ -93,9 +91,6 @@ class ltjprocessed_qtype extends default_questiontype
       $extra              = new stdClass;
       $extra->question    = $question->id;
       $extra->tolerance   = $question->tolerance[$idx];
-      // if it is unchecked in the form, this is not set, work around
-      $extra->remotegrade = isset($question->remotegrade[$idx]) ? 
-	$question->remotegrade[$idx] : 0;
       
       // see if there is an old answer to use for this one, 
       // otherwise make a new one
@@ -136,15 +131,19 @@ class ltjprocessed_qtype extends default_questiontype
     }
 
     // create new object to store our question
-    $options            = new object;
-    $options->question  = $question->id;
-    $options->serverid  = $question->serverid;
-    $options->variables = $question->variables;
+    $options              = new object;
+    $options->question    = $question->id;
+    $options->serverid    = $question->serverid;
+    $options->variables   = $question->variables;
+    $options->remotegrade = 
+	    isset($question->remotegrade) ? $question->remotegrade : 0;
+
 
     // save options
     if ($old = get_record($ltj_tbl, 'question', $question->id)) {
-      $old->serverid  = $options->serverid;
-      $old->variables = $options->variables;
+      $old->serverid    = $options->serverid;
+      $old->variables   = $options->variables;
+      $old->remotegrade = $options->remotegrade;
       if (!update_record($ltj_tbl, $old)) {
 	$result->error = 
 	  "Could not update processed question options! (id=$old->id)";
@@ -532,15 +531,12 @@ class ltjprocessed_qtype extends default_questiontype
       $tree->appendChild($serverml);
     }
 
-    // TODO: append server name and url too, it never hurts to be redundant in 
-    // this situation.  It might be a good idea to make a separate method to generate
-    // that xml
-    
     $varsml = $doc->createElement('variables', $question->options->variables);
     $tree->appendChild($varsml);
+    $remoteml = $doc->createElement('remotegrade', 
+	                                $question->options->remotegrade);
+    $tree->appendChild($remoteml);
 
-    // TODO: add any extra/new options here
-    
     $answersml = $doc->createElement("answers");
     $tree->appendChild($answersml);
     foreach($question->options->answers as $answer) {
@@ -564,7 +560,6 @@ class ltjprocessed_qtype extends default_questiontype
     $ansml->appendChild($doc->createElement('fraction', $answer->fraction));
     $ansml->appendChild($doc->createElement('feedback', $answer->fraction));
     $ansml->appendChild($doc->createElement('tolerance', $answer->tolerance));
-    $ansml->appendChild($doc->createElement('remotegrade', $answer->remotegrade));
     
     return $ansml;
   }
