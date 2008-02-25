@@ -7,8 +7,21 @@
  * @license http://www.gnu.org/copyleft/gpl.html GNU Public License
  * @package ltjprocessed
  */
+
+/*************************************************************
+ * These functions are just to declare table names in a semi-intelligent way
+ *
+ */
+function ltj_tbl()          { return 'question_ltjprocessed'; }
+function ltj_ans_tbl()      { return 'question_ltjprocessed_answers'; }
+function ltj_serv_tbl()     { return 'question_ltjprocessed_servers'; }
+function ltj_state_tbl()    { return 'question_ltjprocessed_states'; }
+function ltj_ansstate_tbl() { return 'question_ltjprocessed_ans_states'; }
+function ans_tbl()          { return 'question_answers'; }
+
+/*************************************************************/
 function installed_server_choices() {
-  return get_records_menu('question_ltjprocessed_servers', '', '', 'servername ASC', 'id, servername');
+  return get_records_menu(ltj_serv_tbl(), '', '', 'servername ASC', 'id, servername');
   }
 
 function get_post_url_contents($url, $urlvars) {

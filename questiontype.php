@@ -13,7 +13,7 @@
  *
  * TODO give an overview of how the class works here.
  */
-$ltj_tbl = 'question_ltjprocessed';
+
 require_once(dirname(__FILE__) . '/locallib.php');
 class ltjprocessed_qtype extends default_questiontype
 {
@@ -30,20 +30,17 @@ class ltjprocessed_qtype extends default_questiontype
    * @return boolean to indicate success of failure.
    */
   function get_question_options(&$question) {
-    $ltj_tbl     = 'question_ltjprocessed';
-    $ltj_ans_tbl = 'question_ltjprocessed_answers';
-    $ans_tbl     = 'question_answers';
-    $question->options = get_record($ltj_tbl, 'question', $question->id);
+    $question->options = get_record(ltj_tbl(), 'question', $question->id);
     if (!$question->options) {
       return false;
     }
-    $answers = get_records($ans_tbl, 'question', $question->id, 'id ASC');
+    $answers = get_records(ans_tbl(), 'question', $question->id, 'id ASC');
     $question->options->answers = array();
     if (!$answers) { 
       return true;
     }
     foreach($answers as $answer) {
-      $extra = get_record($ltj_ans_tbl, 'answer', $answer->id);
+      $extra = get_record(ltj_ans_tbl(), 'answer', $answer->id);
       if ($extra) {
 	$answer->tolerance   = $extra->tolerance;
       } else {
@@ -59,16 +56,12 @@ class ltjprocessed_qtype extends default_questiontype
    * @return boolean to indicate success of failure.
    */
   function save_question_options($question) {
-    $ltj_tbl     = 'question_ltjprocessed';
-    $ltj_ans_tbl = 'question_ltjprocessed_answers';
-    $ans_tbl     = 'question_answers';
-
     // get old answers and extra answer components
-    $oldanswers = get_records($ans_tbl, 'question', $question->id, 'id ASC');
+    $oldanswers = get_records(ans_tbl(), 'question', $question->id, 'id ASC');
     if (!$oldanswers) { 
       $oldanswers = array();
     }
-    $oldextras = get_records($ltj_ans_tbl, 'question', $question->id, 
+    $oldextras = get_records(ltj_ans_tbl(), 'question', $question->id, 
 			     'answer ASC');
     if (!$oldextras) { 
       $oldextras = array();
@@ -101,7 +94,7 @@ class ltjprocessed_qtype extends default_questiontype
 	  return $result;
 	}
       } else { // new answer
-	if (!$answer->id = insert_record($ans_tbl, $answer)) {
+	if (!$answer->id = insert_record(ans_tbl(), $answer)) {
 	  $result->error = "Could not insert question answer!";
 	  return $result;
 	}
@@ -110,12 +103,12 @@ class ltjprocessed_qtype extends default_questiontype
       $extra->answer = $answer->id;
       if ($oldextra = array_shift($oldextras)) {
 	$extra->id = $oldextra->id;
-	if (!update_record($ltj_ans_tbl, $extra)) {
+	if (!update_record(ltj_ans_tbl(), $extra)) {
 	  $result->error = "Could not update question answer extras!";
 	  return $result;
 	}
       } else { // new extra 
-	if (!$extra->id = insert_record($ltj_ans_tbl, $extra)) {
+	if (!$extra->id = insert_record(ltj_ans_tbl(), $extra)) {
 	  $result->error = "Could not insert question answer extras!";
 	  return $result;
 	}
@@ -124,10 +117,10 @@ class ltjprocessed_qtype extends default_questiontype
     
     // remove leftover answer/extra objects
     while ($answer = array_shift($oldanswers)) {
-      delete_records($ans_tbl, 'id', $answer->id);
+      delete_records(ans_tbl(), 'id', $answer->id);
     }
     while ($extra = array_shift($oldextras)) {
-      delete_records($ltj_ans_tbl, 'id', $extra->id);
+      delete_records(ltj_ans_tbl(), 'id', $extra->id);
     }
 
     // create new object to store our question
@@ -140,17 +133,17 @@ class ltjprocessed_qtype extends default_questiontype
 
 
     // save options
-    if ($old = get_record($ltj_tbl, 'question', $question->id)) {
+    if ($old = get_record(ltj_tbl(), 'question', $question->id)) {
       $old->serverid    = $options->serverid;
       $old->variables   = $options->variables;
       $old->remotegrade = $options->remotegrade;
-      if (!update_record($ltj_tbl, $old)) {
+      if (!update_record(ltj_tbl(), $old)) {
 	$result->error = 
 	  "Could not update processed question options! (id=$old->id)";
 	return $result;
       }
     } else {
-      if (!insert_record($ltj_tbl, $options)) {
+      if (!insert_record(ltj_tbl(), $options)) {
 	$result->error = 'Could not insert processed question options!';
 	return $result;
       }
@@ -189,8 +182,7 @@ class ltjprocessed_qtype extends default_questiontype
   }
   
   function process_question(&$question) {
-    $ltj_serv_tbl = 'question_ltjprocessed_servers';
-    $server = get_record($ltj_serv_tbl, 'id', $question->options->serverid);
+    $server = get_record(ltj_serv_tbl(), 'id', $question->options->serverid);
     if (!$server) {
       return "";
     }
@@ -281,14 +273,11 @@ class ltjprocessed_qtype extends default_questiontype
   }
 
   function restore_session_and_responses(&$question, &$state) {
-    $ltj_state_tbl     = 'question_ltjprocessed_states';
-    $ltj_ansstates_tbl = 'question_ltjprocessed_ans_states';
-
-    $ltjstate = get_record($ltj_state_tbl, 'state', $state->id);
+    $ltjstate = get_record(ltj_state_tbl(), 'state', $state->id);
     if ($ltjstate) {
       $question->questiontext = $ltjstate->questiontext;
     }
-    $ltjanswers = get_records($ltj_ansstates_tbl, 'state', $state->id, 
+    $ltjanswers = get_records(ltj_ansstate_tbl(), 'state', $state->id, 
 			      'answer ASC');
     if ($ltjanswers) {
       // sort existing answers by answer id
@@ -320,11 +309,8 @@ class ltjprocessed_qtype extends default_questiontype
   }
     
   function save_session_and_responses(&$question, &$state) {
-    $ltj_state_tbl     = 'question_ltjprocessed_states';
-    $ltj_ansstate_tbl = 'question_ltjprocessed_ans_states';
-
     // save the ltj_state info
-    $oldstates = get_records($ltj_state_tbl, 'state', $state->id, 'id ASC');
+    $oldstates = get_records(ltj_state_tbl(), 'state', $state->id, 'id ASC');
     if (!$oldstates) {
       $oldstates = array();
     }
@@ -336,22 +322,23 @@ class ltjprocessed_qtype extends default_questiontype
     if (count($oldstates)) {
       $old = array_shift($oldstates);
       $ltjstate->id = $old->id;
-      if (!update_record($ltj_state_tbl, $ltjstate)) {
-	$result->error = "Could not update record in ".$ltj_state_tbl."!";
+      if (!update_record(ltj_state_tbl(), $ltjstate)) {
+	$result->error = "Could not update record in ".ltj_state_tbl()."!";
 	return $result;
       }
       while($old = array_shift($oldstates)) {
-	delete_records($ltj_state_tbl, 'id', $old->id);
+	delete_records(ltj_state_tbl(), 'id', $old->id);
       }
     } else {
-      if (!$ltjstate->id = insert_record($ltj_state_tbl, $ltjstate)) {
+      if (!$ltjstate->id = insert_record(ltj_state_tbl(), $ltjstate)) {
 	$result->error = "Could not insert question state into ". 
-	  $ltj_state_tbl . "!";
+	  ltj_state_tbl() . "!";
 	return $result;
       }
     }
     // save the extra answer states now
-    $oldanswers = get_records($ltj_ansstate_tbl, 'state', $state->id, 'id ASC');
+    $oldanswers = get_records(ltj_ansstate_tbl(), 'state', $state->id, 
+			      'id ASC');
     if (!$oldanswers) {
       $oldanswers = array();
     }
@@ -370,21 +357,21 @@ class ltjprocessed_qtype extends default_questiontype
       }
       if ($oldans = array_shift($oldanswers)) {
 	$ltjans->id = $oldans->id;
-	if (!update_record($ltj_ansstate_tbl, $ltjans)) {
-	  $result->error = "Could not update table ".$ltj_ansstate_tbl."!";
+	if (!update_record(ltj_ansstate_tbl(), $ltjans)) {
+	  $result->error = "Could not update table ".ltj_ansstate_tbl()."!";
 	  return $result;
 	}
       } else {
-	$ltjans->id = insert_record($ltj_ansstate_tbl, $ltjans);
+	$ltjans->id = insert_record(ltj_ansstate_tbl(), $ltjans);
 	if (!$ltjans->id) {
-	  $result->error = "Could not insert into ".$ltj_ansstate_tbl."!";
+	  $result->error = "Could not insert into ".ltj_ansstate_tbl()."!";
 	  return $result;
 	}
       }
     }
 
     while($old = array_shift($oldanswers)) {
-      delete_records($ltj_ansstate_tbl, 'id', $old->id);
+      delete_records(ltj_ansstate_tbl(), 'id', $old->id);
     }
     // package up the responses array
     $this->log_response($state->responses, "save_session_and_responses");
@@ -486,8 +473,57 @@ class ltjprocessed_qtype extends default_questiontype
    */
   function backup($bf,$preferences,$question,$level=6) {
     $status = true;
+
+    // TODO write code to backup an instance of your question type.
+    echo "Loading up [". ltj_tbl()."]</br>\n";
+    $ltj_qs = get_records(ltj_tbl(), 'question', $question, 'id');
+    if (!$ltj_qs) {
+      echo "No Questions FOUND!, question id of $question</br>";
+      echo "Was looking in ". ltj_tbl()."</br>";
+      return false;
+    }
+    foreach ($ltj_qs as $ltj_question) {
+      echo "Writing ltj question id ". $ltj_question->id ."</br>";
+      $status = fwrite($bf,start_tag("LTJPROCESSED",$level,true)) && $status;
+      // print contents
+      
+      // server first, it gets it's own sub field
+      $server = get_record(ltj_serv_tbl(), "id", $ltj_question->serverid);
+      $status = fwrite($bf,start_tag("SERVER", $level+1, true)) && $status;
+      $status = fwrite($bf,full_tag("ID", $level+2, false, 
+				    $ltj_question->serverid)) && $status;
+      if ($server) {
+	$status = fwrite($bf,full_tag("NAME", $level+2, false, 
+				      $server->servername)) && $status;
+	$status = fwrite($bf,full_tag("URL", $level+2, false, 
+				      $server->serverurl)) && $status;
+      }
+      $status = fwrite($bf,end_tag("SERVER", $level+1, true)) && $status;
+      $status = fwrite($bf,full_tag("VARIABLES", $level+1,false,
+				    $ltj_question->variables)) && $status;
+      $status = fwrite($bf,full_tag("REMOTEGRADE", $level+1,false,
+				    $ltj_question->remotegrade)) && $status;
+      
+      // write our extra answer fields
+      $answers = get_records(ltj_ans_tbl(), 'question', $ltj_question->question, 'id ASC');
+      if ($answers) {
+	$tmp_status = fwrite($bf,start_tag("ANSWERS", $level+1, true));
+	$status = $status && $tmp_status;
+	foreach($answers as $ans) {
+	  $status = fwrite($bf,start_tag("ANSWER", $level+2, true)) && $status;
+	  $status = fwrite($bf,full_tag("ID",$level+3,false,$ans->answer)) && $status;
+	  $status = fwrite($bf, full_tag("TOLERANCE", $level+3, false, $ans->tolerance)) && $status;
+	  $status = fwrite($bf,end_tag("ANSWER", $level+2, true)) && $status;
+	}
+	$status = fwrite($bf,end_tag("ANSWERS", $level+1, true)) && $status;
+      }
+      // end our tag
+      $status = fwrite($bf,end_tag("LTJPROCESSED",$level,true)) && $status;
+
+    }
     
-    // TODO write code to restore an instance of your question type.
+    // now print the question answers
+    $status = question_backup_answers($bf, $preferences, $question, $level) && $status;
 
     return $status;
   }
@@ -513,8 +549,8 @@ class ltjprocessed_qtype extends default_questiontype
    * @return string the data to append to the output buffer or false if error
    */
   function export_to_xml( $question, $format, $extra=null ) {
-    // To use the xml stuff, you need to make an entire document, but you can print
-    // only the nodes you want, so it's not a big deal
+    // To use the xml stuff, you need to make an entire document, but you can 
+    // print only the nodes you want, so it's not a big deal
     
     $doc = new DOMDocument();
     $tree = $doc->createElement('ltjprocessed');
@@ -572,7 +608,7 @@ class ltjprocessed_qtype extends default_questiontype
    * @return a XMLelement as created by $doc->createElement
    */
   function make_server_xml($doc, $serverid) {
-    $server = get_record("question_ltjprocessed_servers", "id", $serverid);
+    $server = get_record(ltj_serv_tbl(), "id", $serverid);
     if (!$server) {
       return NULL;
     }
