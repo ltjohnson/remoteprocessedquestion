@@ -157,7 +157,9 @@ class ltjprocessed_qtype extends default_questiontype
    * @param string $stateslist Comma separated list of state ids to be deleted
    * @return boolean to indicate success of failure.
    */
+  /*
   function delete_states($stateslist) {
+    return true;
     $tbls = array('question_ltjprocessed_states',
 		  'question_ltjprocessed_ans_states');
     foreach($tbls as $tbl) {
@@ -165,6 +167,7 @@ class ltjprocessed_qtype extends default_questiontype
     }
     return true;
   }
+  */
   /**
    * Deletes question from the question-type specific tables
    *
@@ -272,124 +275,75 @@ class ltjprocessed_qtype extends default_questiontype
     return true;
   }
 
+  /*
+  function log_response($str) {
+    $fp = fopen("/home/leif/log/php.log", "a");
+    fwrite($fp, $str);
+    fclose($fp);
+  }
+  */
   function restore_session_and_responses(&$question, &$state) {
-    $ltjstate = get_record(ltj_state_tbl(), 'state', $state->id);
-    if ($ltjstate) {
-      $question->questiontext = $ltjstate->questiontext;
-    }
-    $ltjanswers = get_records(ltj_ansstate_tbl(), 'state', $state->id, 
-			      'answer ASC');
-    if ($ltjanswers) {
-      // sort existing answers by answer id
-      usort($question->options->answers, "cmp_id");
-      $j = 0; $maxj = count($question->options->answers);
-      // Possibly check count's of this answers vs what the question has
-      foreach($ltjanswers as $answer) {
-	while($j < $maxj &&
-	      $question->options->answers[$j]->id != $answer->answer) {
-	  $j++;
-	}
-	if ($j < $maxj) {
-	  $question->options->answers[$j]->answer    = $answer->answertext;
-	  $question->options->answers[$j]->tolerance = $answer->tolerance;
-	} else {
-	  $ans            = new stdClass;
-	  $ans->id        = $answer->answer;
-	  $ans->answer    = $anwser->answertext;
-	  $ans->tolerance = $answer->tolerance;
-	  array_push($question->options->answers, $ans);
-	}
-      }
-    }
-    // lastly restore the response
+    // Bail if there isn't anything for us to work on
     if (empty($state->responses) || empty($state->responses[''])) {
       $state->responses = array('' => "");
+      return true;
     }
+    // recover the urlencoded strings we stored
+    $output = array();
+    parse_str($state->responses[''], $output);
+    if (array_key_exists("sans", $output)) {
+      $state->responses[''] = urldecode($output["sans"]);
+    } else {
+      $state->responses[''] = "";
+    }
+
+    if (array_key_exists('qtext', $output)) {
+      $question->questiontext = urldecode($output['qtext']);
+    }
+    
+    // build our own answers, once we have them we will try to match
+    // them to existing answers
+    $answers = array();
+    ltj_add_elements($answers, "id", $output, "aid");
+    ltj_add_elements($answers, "answer", $output, "answer");
+    ltj_add_elements($answers, "tolerance", $output, "tolerance");
+    // no need to be clever, just sort each by id then match
+    usort($question->options->answers, "cmp_id");
+    usort($answers, "cmp_id");
+    $j = 0; $maxj = count($question->options->answers);
+    // This cruddy for loop is to keep thing synced by answer id
+    foreach($answers as $answer) {
+      while($j < $maxj && 
+	      $answer->id != $question->options->answers[$j]->id) {
+	  $j++;
+	}
+      if ($j < $maxj) {
+	$question->options->answers[$j]->answer = $answer->answer;
+	$question->options->answers[$j]->tolerance = $answer->tolerance;
+      }
+    }
+    
     return true;
   }
     
   function save_session_and_responses(&$question, &$state) {
-    // save the ltj_state info
-    $oldstates = get_records(ltj_state_tbl(), 'state', $state->id, 'id ASC');
-    if (!$oldstates) {
-      $oldstates = array();
-    }
-    $ltjstate = new stdClass;
-    $ltjstate->state        = $state->id;
-    $ltjstate->attempt      = $state->attempt;
-    $ltjstate->question     = $state->question;
-    $ltjstate->questiontext = $question->questiontext;
-    if (count($oldstates)) {
-      $old = array_shift($oldstates);
-      $ltjstate->id = $old->id;
-      if (!update_record(ltj_state_tbl(), $ltjstate)) {
-	$result->error = "Could not update record in ".ltj_state_tbl()."!";
-	return $result;
-      }
-      while($old = array_shift($oldstates)) {
-	delete_records(ltj_state_tbl(), 'id', $old->id);
-      }
-    } else {
-      if (!$ltjstate->id = insert_record(ltj_state_tbl(), $ltjstate)) {
-	$result->error = "Could not insert question state into ". 
-	  ltj_state_tbl() . "!";
-	return $result;
-      }
-    }
-    // save the extra answer states now
-    $oldanswers = get_records(ltj_ansstate_tbl(), 'state', $state->id, 
-			      'id ASC');
-    if (!$oldanswers) {
-      $oldanswers = array();
-    }
-    
-    foreach($question->options->answers as $answer) {
-      $ltjans = new stdClass;
-      $ltjans->attempt    = $state->attempt;
-      $ltjans->state      = $state->id;
-      $ltjans->answer     = $answer->id;
-      $ltjans->question   = $question->id;
-      $ltjans->answertext = "".$answer->answer;
-      $ltjans->tolerance  = "".$answer->tolerance;
-      // crude length protection
-      if (strlen($ltjans->tolerance) > 254) {
-	$ltjans->tolerance[254] = "\0";
-      }
-      if ($oldans = array_shift($oldanswers)) {
-	$ltjans->id = $oldans->id;
-	if (!update_record(ltj_ansstate_tbl(), $ltjans)) {
-	  $result->error = "Could not update table ".ltj_ansstate_tbl()."!";
-	  return $result;
-	}
-      } else {
-	$ltjans->id = insert_record(ltj_ansstate_tbl(), $ltjans);
-	if (!$ltjans->id) {
-	  $result->error = "Could not insert into ".ltj_ansstate_tbl()."!";
-	  return $result;
-	}
-      }
-    }
 
-    while($old = array_shift($oldanswers)) {
-      delete_records(ltj_ansstate_tbl(), 'id', $old->id);
+    $student_ans = ""; 
+    if (!(empty($state->responses) && empty($state->responses['']))) {
+      $student_ans = $state->responses[''];
     }
-    // package up the responses array
-    $this->log_response($state->responses, "save_session_and_responses");
-    $responses = $state->responses[''];
-    return set_field('question_states', 'answer', $responses, 'id', $state->id);
-  }
-  
-  function log_response($responses, $function="<none>") {
-    /*
-    $lfile = fopen("/var/log/ltj.log", "a");
-    fwrite($lfile, "function: ". $function."\n");
-    fwrite($lfile, "responses: ".$responses."\n");
-    foreach($responses as $key => $value) {
-      fwrite($lfile, "$key = $value \n");
+    // build an array to implode and store
+    $state_str = "sans=".urlencode($student_ans).
+      "&qtext=".urlencode($question->questiontext).
+      "&nans=".urlencode(count($question->options->answers));
+    
+    foreach($question->options->answers as $ans) {
+      $state_str .= 
+	"&aid[]=".urlencode($ans->id).
+	"&answer[]=".urlencode($ans->answer).
+	"&tolerance[]=".urlencode($ans->tolerance);
     }
-    fflush($lfile);
-    fclose($lfile);
-    */
+    return set_field('question_states', 'answer', $state_str, 'id', $state->id);
   }
 
   function print_question_formulation_and_controls(&$question, &$state, 

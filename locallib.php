@@ -20,6 +20,15 @@ function ltj_ansstate_tbl() { return 'question_ltjprocessed_ans_states'; }
 function ans_tbl()          { return 'question_answers'; }
 
 /*************************************************************/
+function ltj_add_elements(&$arr, $arrid, $src, $srcid) {
+  while(count($arr) < count($src[$srcid])) {
+    array_push($arr, new stdClass);
+  }
+  for($i=0; $i<count($src[$srcid]); $i++) {
+    $arr[$i]->$arrid = urldecode($src[$srcid][$i]);
+  }
+}
+/*************************************************************/
 function installed_server_choices() {
   return get_records_menu(ltj_serv_tbl(), '', '', 'servername ASC', 'id, servername');
   }
