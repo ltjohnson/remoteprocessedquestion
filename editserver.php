@@ -69,9 +69,9 @@ if ($mform->is_cancelled()){
 
     if (!empty($data->id) && $data->id != 0) {
         $server->id = $data->id;
-        update_record('question_ltjprocessed_servers', $server);
+        update_record(ltj_serv_tbl(), $server);
     } else {
-        $server->id = insert_record('question_ltjprocessed_servers', $server);
+      $server->id = insert_record(ltj_serv_tbl(), $server);
     }
     
     // XXX TODO check for db errors
@@ -83,7 +83,7 @@ if ($mform->is_cancelled()){
     $id = optional_param('id', '0', PARAM_INT);
     $defaults->id = $id; 
     if ($id) {
-      $server = get_record('question_ltjprocessed_servers', 'id', $id);
+      $server = get_record(ltj_serv_tbl(), 'id', $id);
       if (!$server) {
 	// XXX ERROR here
       }
