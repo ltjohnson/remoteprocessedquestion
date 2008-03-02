@@ -427,17 +427,13 @@ class ltjprocessed_qtype extends default_questiontype
    */
   function backup($bf,$preferences,$question,$level=6) {
     $status = true;
+    
+    /* All of this extra status tracking makes the code harder to read, 
+     * the question is, is it even necessary?
+     */
 
-    // TODO write code to backup an instance of your question type.
-    echo "Loading up [". ltj_tbl()."]</br>\n";
     $ltj_qs = get_records(ltj_tbl(), 'question', $question, 'id');
-    if (!$ltj_qs) {
-      echo "No Questions FOUND!, question id of $question</br>";
-      echo "Was looking in ". ltj_tbl()."</br>";
-      return false;
-    }
     foreach ($ltj_qs as $ltj_question) {
-      echo "Writing ltj question id ". $ltj_question->id ."</br>";
       $status = fwrite($bf,start_tag("LTJPROCESSED",$level,true)) && $status;
       // print contents
       
@@ -482,16 +478,99 @@ class ltjprocessed_qtype extends default_questiontype
     return $status;
   }
 
-  /**
+  /**********************************************************************
    * Restores the data in the question
    *
    * This is used in question/restorelib.php
    */
   function restore($old_question_id,$new_question_id,$info,$restore) {
     $status = true;
-    
-    // TODO write code to restore an instance of your question type.
 
+    /*********************************************************************/
+    // NOTE:
+    // Pulling stuff out of the $info array is more or less magic, I just
+    // copy what is done elsewhere in the code.
+    /*********************************************************************/
+
+    // get the question array
+    $ltjqs = $info['#']['LTJPROCESSED'];
+
+    // Iterate over the questions
+    for($i=0; $i < sizeof($ltjqs); $i++) {
+      // grab the current question
+      $ltj_info = $ltjqs[$i];
+      $ltjq = new stdClass;
+      $ltjq->question = $new_question_id;
+      $ltjq->variables = backup_todb($ltj_info['#']['VARIABLES']['0']['#']);
+      $ltjq->remotegrade = backup_todb($ltj_info['#']['REMOTEGRADE']['0']['#']);
+      
+      /********************************************************************/
+      // grab the server info.  We should do something clever here to ensure 
+      // that we get a valid server id.  Perhaps search through the server list 
+      // by server url, and if we don't get a match, then we insert ours
+      $server_junk = $ltj_info['#']['SERVER'];
+      $server_info = $server_junk[0];
+      $server = new stdClass;
+      $server->id = backup_todb($server_info['#']['ID']['0']['#']);
+      $server->servername = backup_todb($server_info['#']['NAME']['0']['#']);
+      $server->serverurl = backup_todb($server_info['#']['URL']['0']['#']);
+      $servers = get_records(ltj_serv_tbl(), 'serverurl', $server->serverurl,
+			     'id');
+      $servermatch = false;
+      if ($servers && (count($servers) > 0)) {
+	foreach($servers as $srv) {
+	  if ($srv->servername == $server->servername) {
+	    $servermatch = true;
+	    $server->id = $srv->id;
+	  }
+	}
+	if (!$servermatch) {
+	  // we have matching urls, but no name matches
+	  // let's just grab the first one, cause it's the same url
+	  $server->id = $servers[0]->id;
+	  $server->servername = $servers[0]->servername;
+	  $servermatch = true;
+	}
+      }
+      if ($servermatch==false) {
+	// make it obvious that there was a conflict in finding a suitable 
+	// server by adjusting the name
+	$server->servername .= " RESTORED ". date("Ymd");
+	$server->id = insert_record(ltj_serv_tbl(), $server);
+      }
+      $ltjq->serverid = $server->id;
+      /********************************************************************/
+      // Now make the answers line up properly
+
+      $answer_arr = array();
+      $answers_info = $ltj_info['#']['ANSWERS'];
+      // iterate over each saved answer
+      for($j=0; $j < count($answers_info); $j++) {
+	$ans_info = $answers_info[$j];
+	$ans = new stdClass;
+	$ans->tolerance = backup_todb($ans_info['#']['TOLERANCE']['0']['#']);
+	$ans->answer = backup_todb($ans_info['#']['ID']['0']['#']);
+	$ans->question = $new_question_id;
+
+	/* this is magic to make our answer id's match with what was restored */
+	$answer = backup_getid($restore->backup_unique_code, 
+			       "question_answers", $ans->id);
+	if ($answer) {
+	  $ans->answer = $answer->new_id;
+	}
+	// save the restored custom answers
+	array_push($answer_arr, $ans);
+      }
+      /********************************************************************/
+      // In theory our question now matches what was saved, so we now
+      // save everything into the db
+      $ltjq->id = insert_record(ltj_tbl(), $ltjq);
+      foreach($answer_arr as $ans) {
+	$ans->id = insert_record(ltj_ans_tbl(), $ans);
+      }
+      /********************************************************************/
+    } // end of iterate over questions
+    
     return $status;
   }
   /**
@@ -538,8 +617,8 @@ class ltjprocessed_qtype extends default_questiontype
 
   /*
    * make_answer_xml 
-   * @param doc    -- the document element (class DOMDocument) used to generate the 
-   *                  nodes
+   * @param doc    -- the document element (class DOMDocument) used to generate 
+   *                  the nodes
    * @param answer -- the answer to turn into an xml node
    * @return a XMLelement as created by $doc->createElement
    */
@@ -556,8 +635,8 @@ class ltjprocessed_qtype extends default_questiontype
 
   /*
    * make_server_xml 
-   * @param doc      -- the document element (class DOMDocument) used to generate the 
-   *                    nodes
+   * @param doc      -- the document element (class DOMDocument) used to 
+   *                    generate the nodes
    * @param serverid -- the id of the server to turn into xml
    * @return a XMLelement as created by $doc->createElement
    */
@@ -569,12 +648,14 @@ class ltjprocessed_qtype extends default_questiontype
     
     $serverml = $doc->createElement('server');
     $serverml->appendChild($doc->createElement('id', $server->id));
-    $serverml->appendChild($doc->createElement('servername', $server->servername));
-    $serverml->appendChild($doc->createElement('serverurl', $server->serverurl));
+    $serverml->appendChild($doc->createElement('servername', 
+					       $server->servername));
+    $serverml->appendChild($doc->createElement('serverurl', 
+					       $server->serverurl));
     
     return $serverml;
   }
-}
+} // End of question class
 // Register this question type with the system.
 question_register_questiontype(new ltjprocessed_qtype());
 ?>
