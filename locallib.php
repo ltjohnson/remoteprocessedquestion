@@ -29,6 +29,42 @@ function ltj_add_elements(&$arr, $arrid, $src, $srcid) {
   }
 }
 /*************************************************************/
+/* this is a function to match up a imported/restored server reference with
+ * an existing one if possible, and to make a new one if necessary, altering the
+ * name with the prestring to make it obvious.
+ * It returns a non-zero server id on success.  This server id does exist
+ * in the database.  The url associated with it *will* match the one passed in
+ * in $server->serverurl
+ */
+function restore_server_record($server, $prestring="RESTORED") {
+  $servers = get_records(ltj_serv_tbl(), 'serverurl', $server->serverurl,
+			 'id');
+  $servermatch = false;
+  if ($servers && (count($servers) > 0)) {
+    foreach($servers as $srv) {
+      if ($srv->servername == $server->servername) {
+	$servermatch = true;
+	$server->id = $srv->id;
+      }
+    }
+    if (!$servermatch) {
+      // we have matching urls, but no name matches
+      // let's just grab the first one, cause it's the same url
+      $server->id = $servers[0]->id;
+      $server->servername = $servers[0]->servername;
+      $servermatch = true;
+    }
+  }
+  if ($servermatch==false) {
+    // make it obvious that there was a conflict in finding a suitable 
+    // server by adjusting the name
+    $server->servername .= " $prestring ". date("Ymd");
+    $server->id = insert_record(ltj_serv_tbl(), $server);
+  }
+  
+  return $server->id;
+}
+/*************************************************************/
 function installed_server_choices() {
   return get_records_menu(ltj_serv_tbl(), '', '', 'servername ASC', 'id, servername');
   }

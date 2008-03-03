@@ -68,7 +68,8 @@ class ltjprocessed_qtype extends default_questiontype
     }
 
     // Insert answers
-    for($idx=0; $idx < $question->noanswers; $idx++) {
+    $numanswers = count($question->answer);
+    for($idx=0; $idx < $numanswers; $idx++) {
       // skip emtpy answers, this is possibly not the correct action
       if (trim($question->answer[$idx]) == '') {
 	continue;
@@ -78,8 +79,8 @@ class ltjprocessed_qtype extends default_questiontype
       $answer->answer     = trim($question->answer[$idx]);
       $answer->fraction   = isset($question->fraction[$idx]) ?
 	trim($question->fraction[$idx]) : 1.0;
-      $answer->feedback   = ""; // TODO: answer feedback?
-      //$answer->feedback = $question->feedback[$idx];
+      $answer->feedback = isset($question->feedback[$idx]) ?
+	trim($question->feedback[$idx]) : "";
       
       $extra              = new stdClass;
       $extra->question    = $question->id;
@@ -190,56 +191,56 @@ class ltjprocessed_qtype extends default_questiontype
       return "";
     }
     // convert question into request vars
-	$request = array();
-	$request['variables']    = $question->options->variables;
-	$request['questiontext'] = $question->questiontext;
-	$request['numanswers']   = count($question->options->answers);
-	$request['answers']      = array();
-	foreach($question->options->answers as $answer) {
-		$ans = array();
-		$ans['ansid']     = $answer->id;
-		$ans['answer']    = $answer->answer;
-		$ans['tolerance'] = $answer->tolerance;
-		array_push($request['answers'], $ans);
-	}
+    $request = array();
+    $request['variables']    = $question->options->variables;
+    $request['questiontext'] = $question->questiontext;
+    $request['numanswers']   = count($question->options->answers);
+    $request['answers']      = array();
+    foreach($question->options->answers as $answer) {
+      $ans = array();
+      $ans['ansid']     = $answer->id;
+      $ans['answer']    = $answer->answer;
+      $ans['tolerance'] = $answer->tolerance;
+      array_push($request['answers'], $ans);
+    }
 
     $url    = $server->serverurl;
-	$method = 'processquestion';
+    $method = 'processquestion';
 
-	$processed = xmlrpc_request($url, $method, $request);
-	if (array_key_exists('faultCode', $processed)) {
-		echo "Error processing question: faultCode[". $processed['faultCode'];
-		echo "], faultString[".$processed['faultString']."]</br>\n";
-		return NULL; 
-	}
-	// post process variables, mainly to make sure we don't end up with 
-	// something completely bogus
-	$ret = new stdClass;
-	if (isset($processed['questiontext']) && 
-	    trim($processed['questiontext']) != '') {
-		$ret->questiontext = $processed['questiontext'];
-	}
+    $processed = xmlrpc_request($url, $method, $request);
+    if (array_key_exists('faultCode', $processed)) {
+      echo "Error processing question: faultCode[". $processed['faultCode'];
+      echo "], faultString[".$processed['faultString']."]</br>\n";
+      return NULL; 
+    }
+    // post process variables, mainly to make sure we don't end up with 
+    // something completely bogus
+    $ret = new stdClass;
+    if (isset($processed['questiontext']) && 
+	trim($processed['questiontext']) != '') {
+      $ret->questiontext = $processed['questiontext'];
+    }
     $ansno = 0;
     $ret->answers = array();
-	foreach($processed['answers'] as $ans) {
-		$answer = new stdClass;
-		if (isset($ans['answer']) && trim($ans['answer']) != '') {
-			$answer->answer = $ans['answer'];
-		} else {
-			$answer->answer = "0";
-		}
-		if (isset($ans['tolerance']) && trim($ans['tolerance']) != '') {
-			$answer->tolerance = $ans['tolerance'];
-		} else {
-			$answer->tolerance = "0";
-		}
-		if (isset($ans['ansid']) && trim($ans['ansid']) != '') {
-			$answer->id = $ans['ansid'];
-		} else {
-			$answer->id = 0;
-		}
+    foreach($processed['answers'] as $ans) {
+      $answer = new stdClass;
+      if (isset($ans['answer']) && trim($ans['answer']) != '') {
+	$answer->answer = $ans['answer'];
+      } else {
+	$answer->answer = "0";
+      }
+      if (isset($ans['tolerance']) && trim($ans['tolerance']) != '') {
+	$answer->tolerance = $ans['tolerance'];
+      } else {
+	$answer->tolerance = "0";
+      }
+      if (isset($ans['ansid']) && trim($ans['ansid']) != '') {
+	$answer->id = $ans['ansid'];
+      } else {
+	$answer->id = 0;
+      }
       array_push($ret->answers, $answer);
-	}
+    }
 
     $ret->numanswers = count($ret->answers);
     return $ret;
@@ -274,10 +275,10 @@ class ltjprocessed_qtype extends default_questiontype
     $state->responses = array('' => "");
     return true;
   }
-
+  
   /*
   function log_response($str) {
-    $fp = fopen("/home/leif/log/php.log", "a");
+    $fp = fopen("/Users/leif/log/php.log", "a");
     fwrite($fp, $str);
     fclose($fp);
   }
@@ -505,40 +506,15 @@ class ltjprocessed_qtype extends default_questiontype
       $ltjq->remotegrade = backup_todb($ltj_info['#']['REMOTEGRADE']['0']['#']);
       
       /********************************************************************/
-      // grab the server info.  We should do something clever here to ensure 
-      // that we get a valid server id.  Perhaps search through the server list 
-      // by server url, and if we don't get a match, then we insert ours
+      // Clever stuff to keep the server table sane is hidden in
+      // restore_server_record
       $server_junk = $ltj_info['#']['SERVER'];
       $server_info = $server_junk[0];
       $server = new stdClass;
       $server->id = backup_todb($server_info['#']['ID']['0']['#']);
       $server->servername = backup_todb($server_info['#']['NAME']['0']['#']);
       $server->serverurl = backup_todb($server_info['#']['URL']['0']['#']);
-      $servers = get_records(ltj_serv_tbl(), 'serverurl', $server->serverurl,
-			     'id');
-      $servermatch = false;
-      if ($servers && (count($servers) > 0)) {
-	foreach($servers as $srv) {
-	  if ($srv->servername == $server->servername) {
-	    $servermatch = true;
-	    $server->id = $srv->id;
-	  }
-	}
-	if (!$servermatch) {
-	  // we have matching urls, but no name matches
-	  // let's just grab the first one, cause it's the same url
-	  $server->id = $servers[0]->id;
-	  $server->servername = $servers[0]->servername;
-	  $servermatch = true;
-	}
-      }
-      if ($servermatch==false) {
-	// make it obvious that there was a conflict in finding a suitable 
-	// server by adjusting the name
-	$server->servername .= " RESTORED ". date("Ymd");
-	$server->id = insert_record(ltj_serv_tbl(), $server);
-      }
-      $ltjq->serverid = $server->id;
+      $ltjq->serverid = restore_server_record($server, "RESTORED");
       /********************************************************************/
       // Now make the answers line up properly
 
@@ -573,12 +549,60 @@ class ltjprocessed_qtype extends default_questiontype
     
     return $status;
   }
-  /**
+  /**********************************************************************
+   * Provide import functionality for xml format
+   * @param data mixed the segment of data containing the question
+   * @param question object processed (so far) by standard import code
+   * @param format object so that helper methods can be used (in 
+   *               particular error())
+   * @param extra mixed any additional format specific data that may be passed 
+   *        by the format (see format code for info)
+   * @return object question suitable for save_options() call or false if 
+   *                cannot handle
+   */
+  function import_from_xml( $data, $question, $format, $extra=null ) {
+    if (!array_key_exists('@', $data)) {
+      return false;
+    }
+    if (!array_key_exists('type', $data['@'])) {
+      return false;
+    }
+    if ($data['@']['type'] != 'ltjprocessed') {
+      return false;
+    }
+    $question = $format->import_headers($data);
+    $question->qtype = 'ltjprocessed';
+    // grab our chunk
+    $ltjprocessed = $data['#']['ltjprocessed']['0']['#'];
+    $question->variables = $ltjprocessed['variables']['0']['#'];
+    $question->remotegrade = $ltjprocessed['remotegrade']['0']['#'];
+    // do server processing
+    $serv = $ltjprocessed['server']['0']['#'];
+
+    $server = new stdClass;
+    $server->id         = $serv['id']['0']['#'];
+    $server->servername = $serv['servername']['0']['#'];
+    $server->serverurl  = $serv['serverurl']['0']['#'];
+    $question->serverid = restore_server_record($server, "IMPORTED");
+
+    $answers = $ltjprocessed['answers']['0']['#']['answer'];
+    for($i = 0; $i< count($answers); $i++) {
+      $ans = $answers[$i]['#'];
+      $question->answer[$i]    = $ans['answer']['0']['#'];
+      $question->tolerance[$i] = $ans['tolerance']['0']['#'];
+      $question->fraction[$i]  = $ans['fraction']['0']['#'];
+      $question->feedback[$i]  = $ans['feedback']['0']['#'];
+    }
+
+    return $question;
+    
+  } // function import_from_xml
+  /**********************************************************************
    * Provide export functionality for xml format
    * @param question object the question object
    * @param format object the format object so that helper methods can be used 
-   * @param extra mixed any additional format specific data that may be passed by the 
-   *              format (see format code for info)
+   * @param extra mixed any additional format specific data that may be passed 
+   *        by the format (see format code for info)
    * @return string the data to append to the output buffer or false if error
    */
   function export_to_xml( $question, $format, $extra=null ) {
