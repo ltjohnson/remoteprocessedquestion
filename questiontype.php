@@ -79,8 +79,7 @@ class ltjprocessed_qtype extends default_questiontype
       $answer->answer     = trim($question->answer[$idx]);
       $answer->fraction   = isset($question->fraction[$idx]) ?
 	trim($question->fraction[$idx]) : 1.0;
-      $answer->feedback = isset($question->feedback[$idx]) ?
-	trim($question->feedback[$idx]) : "";
+      $answer->feedback = trim($question->feedback[$key]);
       
       $extra              = new stdClass;
       $extra->question    = $question->id;
@@ -354,6 +353,8 @@ class ltjprocessed_qtype extends default_questiontype
     $readonly = empty($options->readonly) ? '' : 'disabled="disabled"';
     $inputname = $question->name_prefix;
     $value = $state->responses[''];
+
+    $answers = &$question->options->answers;
     
     // Print formulation
     $questiontext = $this->format_text($question->questiontext,
@@ -373,10 +374,22 @@ class ltjprocessed_qtype extends default_questiontype
     
     // TODO prepare any other data necessary. For instance
     $feedback = '';
+    /*
+     * getting feedback to work properly is not simple.  Moodle does not
+     * tell us which answer was reached, so we have to figure it out again
+     * when we get here.  This is problematic as we are going to allow for 
+     * questions to be graded offsite.  What we are going to do is to find
+     * some way to figure out which answer was reached and store the answer
+     * id in the states somehow.  Then we will simply grab the feedback for 
+     * that answer when we get here.  But for now, there is no feedback.
     if ($options->feedback) {
       
+      echo "feedback is: ". $options->feedback. "</br>";
+      $feedback = $this->format_text($options->feedback, 
+				     $question->questiontextformat, 
+				     $cmoptions);
     }
-    
+    */
     include("$CFG->dirroot/question/type/ltjprocessed/display.html");
   }
     

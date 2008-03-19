@@ -29,7 +29,6 @@ class question_edit_ltjprocessed_form extends question_edit_form {
 			    get_string('ltj_server', 'qtype_ltjprocessed'), 
 			    installed_server_choices());
     $mform->setType('serverid', PARAM_INT);
-    $mform->addRule('serverid', null, 'required', null, 'client' );
 
     // variables element 
     $lbl   = get_string('ltj_variables', 'qtype_ltjprocessed');
@@ -38,13 +37,14 @@ class question_edit_ltjprocessed_form extends question_edit_form {
 		   'maxlength' => 1024);
     $variable_element = 
       $mform->createElement('textarea', 'variables', $lbl, $attrs);
-    $mform->addRule('variables', 'Maxlength 1024 characters', 'maxlength', 
-		    1024, 'client');
     $mform->setType('variables', PARAM_RAW);
 
     // insert them *before* questiontext
     $mform->insertElementBefore($variable_element, 'questiontext');
     $mform->insertElementBefore($server_select, 'variables');
+    $mform->addRule('serverid', null, 'required', null, 'client' );
+    $mform->addRule('variables', 'Maxlength 1024 characters', 'maxlength', 
+		    1024, 'client');
     ///////////////////////////////////////////////////////////////
 	// This goes at the bottom by the answers, but it's not a repeated
 	// element cause it's a question level option
@@ -69,6 +69,10 @@ class question_edit_ltjprocessed_form extends question_edit_form {
     $repeated[] =& $mform->createElement('select', 'fraction', 
 					 get_string('grade'), $gradeoptions);
     $repeatedoptions['fraction']['default'] = 0;
+    
+    $repeated[] =& $mform->createElement('htmleditor', 'feedback', 
+					 get_string('feedback', 'quiz'));
+    $mform->setType('feedback', PARAM_RAW);
 	
     if (isset($this->question->options) && 
 	isset($this->question->options->answers)) {
