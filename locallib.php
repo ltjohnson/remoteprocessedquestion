@@ -19,6 +19,23 @@ function ltj_state_tbl()    { return 'question_ltjprocessed_states'; }
 function ltj_ansstate_tbl() { return 'question_ltjprocessed_ans_states'; }
 function ans_tbl()          { return 'question_answers'; }
 
+/*************************************************************
+ * functions to support file uploads
+ */
+/* returns the file area name for this attempt and question */
+function question_file_area_name($attemptid, $questionid) {
+  global $CFG, $USER;
+  
+  if ($attemptid == 0) {
+    $attemptid = $attemptid."_".$USER->id;
+  }
+  
+  return 'questionattempt/'.$attemptid.'/'.$questionid;
+}
+
+function question_file_area($dir) {
+  return make_upload_directory($dir);
+}
 /*************************************************************/
 function ltj_add_elements(&$arr, $arrid, $src, $srcid) {
   while(count($arr) < count($src[$srcid])) {
@@ -64,11 +81,16 @@ function restore_server_record($server, $prestring="RESTORED") {
   
   return $server->id;
 }
-/*************************************************************/
+/*************************************************************
+ * lists installed servers in a menu form for edit_ltjprocessed
+ */
 function installed_server_choices() {
   return get_records_menu(ltj_serv_tbl(), '', '', 'servername ASC', 'id, servername');
   }
 
+/*************************************************************
+ * misc functions to support xml-rpc stuff
+ */
 function get_post_url_contents($url, $urlvars) {
   $crl = curl_init();
   curl_setopt($crl, CURLOPT_URL, $url);

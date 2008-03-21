@@ -128,6 +128,7 @@ class ltjprocessed_qtype extends default_questiontype
     $options->question    = $question->id;
     $options->serverid    = $question->serverid;
     $options->variables   = $question->variables;
+    $options->imagecode   = $question->imagecode;
     $options->remotegrade = 
 	    isset($question->remotegrade) ? $question->remotegrade : 0;
 
@@ -136,6 +137,7 @@ class ltjprocessed_qtype extends default_questiontype
     if ($old = get_record(ltj_tbl(), 'question', $question->id)) {
       $old->serverid    = $options->serverid;
       $old->variables   = $options->variables;
+      $old->imagecode   = $options->imagecode;
       $old->remotegrade = $options->remotegrade;
       if (!update_record(ltj_tbl(), $old)) {
 	$result->error = 
@@ -152,22 +154,41 @@ class ltjprocessed_qtype extends default_questiontype
   }
 
   /**
-   * Deletes states from the question-type specific tables
+   * Deletes states for the question-type
    *
    * @param string $stateslist Comma separated list of state ids to be deleted
    * @return boolean to indicate success of failure.
    */
-  /*
   function delete_states($stateslist) {
-    return true;
-    $tbls = array('question_ltjprocessed_states',
-		  'question_ltjprocessed_ans_states');
-    foreach($tbls as $tbl) {
-      delete_records_select($tbl, "state IN ($stateslist)");
-    }
+    global $CFG;
+    
+    //echo "Called ltjprocessed->delete_states with states ".$stateslist."</br>\n";
+
+    $states = explode(",", $stateslist);
+    
+    foreach($states as $stateid) {
+      $state = get_record("question_states", "id", "$stateid");
+      $attemptid  = $state->attempt;
+      $questionid = $state->question;
+      
+      // Delete files for this attempt.  This actually deletes files for 
+      // ALL of the questions for this attempt, but that is okay because
+      // this function is never called unless the entire attempt is being 
+      // deleted.
+      $dir = question_file_area_name($attemptid, $questionid);
+      if (file_exists($CFG->dataroot.'/'.$dir)) {
+	fulldelete($CFG->dataroot.'/'.$dir);
+	// delete the second level if there is one
+	$dirparts = explode('/', $dir);
+	array_pop($dirparts);
+	$dir = implode('/', $dirparts);
+	if (file_exists($CFG->dataroot.'/'.$dir)) {
+	  fulldelete($CFG->dataroot.'/'.$dir);
+	}
+      }
+    } // foreach $state
     return true;
   }
-  */
   /**
    * Deletes question from the question-type specific tables
    *
@@ -184,7 +205,7 @@ class ltjprocessed_qtype extends default_questiontype
     return true;
   }
   
-  function process_question(&$question) {
+  function process_question(&$question, $attemptid) {
     $server = get_record(ltj_serv_tbl(), 'id', $question->options->serverid);
     if (!$server) {
       return "";
@@ -192,6 +213,9 @@ class ltjprocessed_qtype extends default_questiontype
     // convert question into request vars
     $request = array();
     $request['variables']    = $question->options->variables;
+    if (trim($question->options->imagecode)) {
+      $request['imagecode']    = trim($question->options->imagecode);
+    }
     $request['questiontext'] = $question->questiontext;
     $request['numanswers']   = count($question->options->answers);
     $request['answers']      = array();
@@ -219,6 +243,22 @@ class ltjprocessed_qtype extends default_questiontype
 	trim($processed['questiontext']) != '') {
       $ret->questiontext = $processed['questiontext'];
     }
+    // handle image processing
+    if (array_key_exists('image', $processed) && isset($processed['image'])) {
+      $imgdata = base64_decode($processed['image']);
+      // get the image dir
+      $dir = question_file_area_name($attemptid, $question->id);
+      $basedir = question_file_area($dir);
+      if($basedir) {
+	// TODO: make this name unique;
+	$imgname = "genimage.png";
+	$imgfile = fopen($basedir ."/".$imgname, "w");
+	fwrite($imgfile, $imgdata);
+	fclose($imgfile);
+	$ret->genimage = $imgname;
+      }
+    }
+    // go over processed answers
     $ansno = 0;
     $ret->answers = array();
     foreach($processed['answers'] as $ans) {
@@ -248,9 +288,12 @@ class ltjprocessed_qtype extends default_questiontype
   function create_session_and_responses(&$question, &$state, $cmoptions, $attempt) {
     global $QTYPES;
     // remote process the question
-    $newq = $QTYPES[$question->qtype]->process_question($question);
+    $newq = $QTYPES[$question->qtype]->process_question($question, $attempt->id);
     if ($newq != NULL && isset($newq->questiontext)) {
       $question->questiontext = $newq->questiontext;
+    }
+    if ($newq != NULL && isset($newq->genimage)) {
+      $question->options->genimage = $newq->genimage;
     }
     if ($newq != NULL && isset($newq->numanswers)) {
       // let's not be clever here, just try to match them up.
@@ -301,6 +344,10 @@ class ltjprocessed_qtype extends default_questiontype
       $question->questiontext = urldecode($output['qtext']);
     }
     
+    if (array_key_exists('genimage', $output)) {
+      $question->options->genimage = urldecode($output['genimage']);
+    }
+    
     // build our own answers, once we have them we will try to match
     // them to existing answers
     $answers = array();
@@ -334,8 +381,14 @@ class ltjprocessed_qtype extends default_questiontype
     }
     // build an array to implode and store
     $state_str = "sans=".urlencode($student_ans).
-      "&qtext=".urlencode($question->questiontext).
-      "&nans=".urlencode(count($question->options->answers));
+      "&qtext=".urlencode($question->questiontext);
+    // add the generated image if we have one
+    if (isset($question->options->genimage)) {
+      $state_str .= "&genimage=".urlencode($question->options->genimage);
+    }
+    
+    // now encode the answers
+    $state_str .= "&nans=".urlencode(count($question->options->answers));
     
     foreach($question->options->answers as $ans) {
       $state_str .= 
@@ -362,6 +415,19 @@ class ltjprocessed_qtype extends default_questiontype
 				       $cmoptions);
     $image = get_question_image($question, $cmoptions->course);
     
+    $genimage = NULL;
+    if (isset($question->options->genimage)) {
+      $genimage = question_file_area_name($state->attempt, $question->id);
+      $genimage .= "/".$question->options->genimage;
+      // remove the questionattempt from the start of this path
+      $genimagelist = explode("/", $genimage);
+      $fileurl = implode("/", array_slice($genimagelist, 1));
+      if ($CFG->slasharguments) {
+	$genimage = "$CFG->wwwroot/question/file.php/$fileurl";
+      } else {
+	$genimage = "$CFG->wwwroot/question/file.php?file=/$fileurl";
+      }
+    }
     // we could do fancier stuff for the answer form here
     // need to respect read only here etc.  should also preserve student 
     // responses
@@ -465,6 +531,8 @@ class ltjprocessed_qtype extends default_questiontype
       $status = fwrite($bf,end_tag("SERVER", $level+1, true)) && $status;
       $status = fwrite($bf,full_tag("VARIABLES", $level+1,false,
 				    $ltj_question->variables)) && $status;
+      $status = fwrite($bf,full_tag("IMAGECODE", $level+1,false,
+				    $ltj_question->imagecode)) && $status;
       $status = fwrite($bf,full_tag("REMOTEGRADE", $level+1,false,
 				    $ltj_question->remotegrade)) && $status;
       
@@ -516,6 +584,7 @@ class ltjprocessed_qtype extends default_questiontype
       $ltjq = new stdClass;
       $ltjq->question = $new_question_id;
       $ltjq->variables = backup_todb($ltj_info['#']['VARIABLES']['0']['#']);
+      $ltjq->imagecode = backup_todb($ltj_info['#']['IMAGECODE']['0']['#']);
       $ltjq->remotegrade = backup_todb($ltj_info['#']['REMOTEGRADE']['0']['#']);
       
       /********************************************************************/
@@ -588,6 +657,7 @@ class ltjprocessed_qtype extends default_questiontype
     // grab our chunk
     $ltjprocessed = $data['#']['ltjprocessed']['0']['#'];
     $question->variables = $ltjprocessed['variables']['0']['#'];
+    $question->imagecode = $ltjprocessed['imagecode']['0']['#'];
     $question->remotegrade = $ltjprocessed['remotegrade']['0']['#'];
     // do server processing
     $serv = $ltjprocessed['server']['0']['#'];
@@ -639,6 +709,8 @@ class ltjprocessed_qtype extends default_questiontype
 
     $varsml = $doc->createElement('variables', $question->options->variables);
     $tree->appendChild($varsml);
+    $imgml = $doc->createElement('imagecode', $question->options->imagecode);
+    $tree->appendChild($imgml);
     $remoteml = $doc->createElement('remotegrade', 
 	                                $question->options->remotegrade);
     $tree->appendChild($remoteml);

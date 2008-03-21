@@ -33,18 +33,20 @@ class question_edit_ltjprocessed_form extends question_edit_form {
     // variables element 
     $lbl   = get_string('ltj_variables', 'qtype_ltjprocessed');
     $attrs = array('rows'      => 4, 
-		   'cols'      => 60,
-		   'maxlength' => 1024);
+		   'cols'      => 60);
     $variable_element = 
       $mform->createElement('textarea', 'variables', $lbl, $attrs);
     $mform->setType('variables', PARAM_RAW);
 
+    $imagecode_element = 
+      $mform->createElement('textarea', 'imagecode', "Image Code", $attrs);
+    $mform->setType('imagecode', PARAM_RAW);
+
     // insert them *before* questiontext
-    $mform->insertElementBefore($variable_element, 'questiontext');
+    $mform->insertElementBefore($imagecode_element, 'questiontext');
+    $mform->insertElementBefore($variable_element, 'imagecode');
     $mform->insertElementBefore($server_select, 'variables');
     $mform->addRule('serverid', null, 'required', null, 'client' );
-    $mform->addRule('variables', 'Maxlength 1024 characters', 'maxlength', 
-		    1024, 'client');
     ///////////////////////////////////////////////////////////////
 	// This goes at the bottom by the answers, but it's not a repeated
 	// element cause it's a question level option
@@ -93,6 +95,7 @@ class question_edit_ltjprocessed_form extends question_edit_form {
       $question->serverid    = $question->options->serverid;
       $question->remotegrade = $question->options->remotegrade;
       $question->variables   = $question->options->variables;
+      $question->imagecode   = $question->options->imagecode;
       $question->answers     = $question->options->answers;
       // load answers and associated extras here
       $answers = $question->options->answers;
