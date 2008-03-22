@@ -218,6 +218,7 @@ class ltjprocessed_qtype extends default_questiontype
     }
     $request['questiontext'] = $question->questiontext;
     $request['numanswers']   = count($question->options->answers);
+    $request['remotegrade']  = $question->options->remotegrade;
     $request['answers']      = array();
     foreach($question->options->answers as $answer) {
       $ans = array();
@@ -243,7 +244,10 @@ class ltjprocessed_qtype extends default_questiontype
 	trim($processed['questiontext']) != '') {
       $ret->questiontext = $processed['questiontext'];
     }
-    // handle image processing
+    /*****************************************************************
+     * Images and workpspaces are sent as base64 encoded blobs.  We need 
+     * to decode them and save them in an appropriate place
+     */
     if (array_key_exists('image', $processed) && isset($processed['image'])) {
       $imgdata = base64_decode($processed['image']);
       // get the image dir
@@ -258,6 +262,26 @@ class ltjprocessed_qtype extends default_questiontype
 	$ret->genimage = $imgname;
       }
     }
+    
+    if (array_key_exists('workspace', $processed) && 
+	isset($processed['workspace'])) {
+      // we don't really need to decode it, as all we are going to do
+      // is send it back, but this *should* save a little diskspace over
+      // writing the file as base64_encoded 
+      $workdata = base64_decode($processed['workspace']);
+      $dir = question_file_area_name($attemptid, $question->id);
+      $basedir = question_file_area($dir);
+      if($basedir) {
+	// TODO: make this name unique.
+	$workname = "workspace.dat";
+	$workfile = fopen($basedir ."/". $workname, "w");
+	fwrite($workfile, $workdata);
+	fclose($workfile);
+	$ret->workspace = $workname;
+      }
+    }
+    /*****************************************************************
+     */
     // go over processed answers
     $ansno = 0;
     $ret->answers = array();
@@ -295,6 +319,10 @@ class ltjprocessed_qtype extends default_questiontype
     if ($newq != NULL && isset($newq->genimage)) {
       $question->options->genimage = $newq->genimage;
     }
+    if ($newq != NULL && isset($newq->workspace)) {
+      $question->options->workspace = $newq->workspace;
+    }
+    
     if ($newq != NULL && isset($newq->numanswers)) {
       // let's not be clever here, just try to match them up.
       // sort each by id
@@ -334,6 +362,10 @@ class ltjprocessed_qtype extends default_questiontype
     // recover the urlencoded strings we stored
     $output = array();
     parse_str($state->responses[''], $output);
+    /*****************************************************************
+     * The simple things are in this section, just grabe the decoded
+     * output
+     */
     if (array_key_exists("sans", $output)) {
       $state->responses[''] = urldecode($output["sans"]);
     } else {
@@ -346,6 +378,14 @@ class ltjprocessed_qtype extends default_questiontype
     
     if (array_key_exists('genimage', $output)) {
       $question->options->genimage = urldecode($output['genimage']);
+    }
+    
+    if (array_key_exists('genimage', $output)) {
+      $question->options->genimage = urldecode($output['genimage']);
+    }
+    
+    if (array_key_exists('workspace', $output)) {
+      $question->options->workspace = urldecode($output['workspace']);
     }
     
     // build our own answers, once we have them we will try to match
@@ -385,6 +425,10 @@ class ltjprocessed_qtype extends default_questiontype
     // add the generated image if we have one
     if (isset($question->options->genimage)) {
       $state_str .= "&genimage=".urlencode($question->options->genimage);
+    }
+    
+    if (isset($question->options->workspace)) {
+      $state_str .= "&workspace=".urlencode($question->options->workspace);
     }
     
     // now encode the answers
