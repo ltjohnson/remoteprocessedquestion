@@ -205,6 +205,9 @@ class ltjprocessed_qtype extends default_questiontype
     return true;
   }
   
+  /******************************************************************
+   * The actual remote stuff
+   */
   function process_question(&$question, $attemptid) {
     $server = get_record(ltj_serv_tbl(), 'id', $question->options->serverid);
     if (!$server) {
@@ -309,6 +312,55 @@ class ltjprocessed_qtype extends default_questiontype
     return $ret;
   }
 
+  function remotegrade_question(&$question, &$state) {
+    global $CFG;
+
+    $server = get_record(ltj_serv_tbl(), 'id', $question->options->serverid);
+    if (!$server) {
+      return "";
+    }
+
+    $request = array();
+
+    // attach workspace if it exists
+    if ($question->options->workspace) {
+      $filename = $CFG->dataroot . '/' . 
+	question_file_area_name($state->attempt, $question->id) .
+	"/". $question->options->workspace;
+      $filein = fopen($filename, "rb");
+      $filedata = fread($filein, filesize($filename) );
+      fclose($filein);
+      $request['workspace'] = base64_encode($filedata);
+    }
+
+    $request['studentans'] = $state->responses[''];
+
+    // attach answers
+    if ($question->options->answers) {
+      $request['answers'] = array();
+      foreach($question->options->answers as $answer) {
+	$ans           = array();
+	$ans['ansid']  = $answer->id;
+	$ans['answer'] = $answer->answer;
+	array_push($request['answers'], $ans);
+      }
+    }
+
+    // Finally send the request to the server
+    $url    = $server->serverurl;
+    $method = 'grade';
+    $result = xmlrpc_request($url, $method, $request);
+    /* check for errors, fail gracefully, blah blah blah */
+    $ret = array();
+    foreach($result as $r) {
+      if ($r != 0) {
+	$ret[$r] = 1;
+      }
+    }
+    return $ret;
+  }
+
+  /*****************************************************************/
   function create_session_and_responses(&$question, &$state, $cmoptions, $attempt) {
     global $QTYPES;
     // remote process the question
@@ -372,6 +424,10 @@ class ltjprocessed_qtype extends default_questiontype
       $state->responses[''] = "";
     }
 
+    if (array_key_exists("ansid", $ouput)) {
+      $state->ansid = urldecode($output['ansid']);
+    }
+
     if (array_key_exists('qtext', $output)) {
       $question->questiontext = urldecode($output['qtext']);
     }
@@ -422,6 +478,10 @@ class ltjprocessed_qtype extends default_questiontype
     // build an array to implode and store
     $state_str = "sans=".urlencode($student_ans).
       "&qtext=".urlencode($question->questiontext);
+
+    if (isset($state->ansid)) {
+      $state_str .= "&ansid=".urlencode($state->ansid);
+    }
     // add the generated image if we have one
     if (isset($question->options->genimage)) {
       $state_str .= "&genimage=".urlencode($question->options->genimage);
@@ -484,22 +544,17 @@ class ltjprocessed_qtype extends default_questiontype
     
     // TODO prepare any other data necessary. For instance
     $feedback = '';
-    /*
-     * getting feedback to work properly is not simple.  Moodle does not
-     * tell us which answer was reached, so we have to figure it out again
-     * when we get here.  This is problematic as we are going to allow for 
-     * questions to be graded offsite.  What we are going to do is to find
-     * some way to figure out which answer was reached and store the answer
-     * id in the states somehow.  Then we will simply grab the feedback for 
-     * that answer when we get here.  But for now, there is no feedback.
-    if ($options->feedback) {
-      
-      echo "feedback is: ". $options->feedback. "</br>";
-      $feedback = $this->format_text($options->feedback, 
+    if ($options->feedback && $state->ansid) {
+      foreach($question->options->answer as $answer) {
+	if ($answer->id == $state->ansid) {
+	  $feedback = $answer->feedback;
+	  break;
+	}
+      }
+      $feedback = $this->format_text($feedback, 
 				     $question->questiontextformat, 
 				     $cmoptions);
     }
-    */
     include("$CFG->dirroot/question/type/ltjprocessed/display.html");
   }
     
@@ -509,18 +564,34 @@ class ltjprocessed_qtype extends default_questiontype
    * answer, false if it doesn't.
    */
   function test_response(&$question, &$state, $answer) {
+    global $QTYPES;
+
     // TODO: increase robustness/error handling
     // we'll just do the simplest thing possible for now
     $student_answer = $state->responses[''];
     if (trim($student_answer) == '') {
       return false;
     }
-    // convert to numbers/floats?
-    $res = abs($answer->answer - $student_answer);
-    if ($res <= $answer->tolerance) {
-      return true;
-    } 
+    if ($question->options->remotegrade == 1) { 
+      if (!isset($state->matchedanswers)) {
+	// remote process the answers to get the matching ones
+	$state->matchedanswers = 
+	  $QTYPES[$question->qtype]->remotegrade_question($question, $state);
 
+      }
+      if (array_key_exists($answer->id, $state->matchedanswers)) {
+	$state->ansid = $answer->id;
+	return true;
+      }
+    } else {
+      // do basic grading inside of moodle
+      // convert to numbers/floats?
+      $res = abs($answer->answer - $student_answer);
+      if ($res <= $answer->tolerance) {
+	$state->ansid = $answer->id;
+	return true;
+      } 
+    }
     return false;
   }
 
@@ -544,6 +615,47 @@ class ltjprocessed_qtype extends default_questiontype
     return empty($ret) ? null : $ret;
   }
 
+  /*
+  function grade_responses(&$question, &$state, $cmoptions) {
+
+    // this is custom so we can do remote grading
+    // we break it into two sections, 1 for grade in moodle, 
+    // 1 for remote grading, each method simply sets ansid to be
+    // 0 if there is no match, and the ansid of the first matching answer 
+    // otherwise
+    $state->ansid = 0;
+    $state->raw_grade = 0;
+    if ($question->options->remotegrade) {
+      // remote process the question
+      $res = 
+      $state->ansid = $res->ansid;
+      $state->raw_grade = $res->fraction;
+    } else {
+      foreach($question->options->answers as $answer) {
+	if ($this->test_response($question, $state, $answer)) {
+	  $state->ansid = $answer->id;
+	  $state->raw_grade = $answer->fraction;
+	  break;
+	}
+      }
+    } // moodle grade
+    
+    echo "grade_responses selected ansid ". $state->ansid ."</br>\n";
+    echo "raw grade: $state->raw_grade </br>\n";
+    // moodle normalize the grade, this is blatantly copied from the base class
+    // function
+    $state->raw_grade = min(max((float) $state_raw_grade, 
+				0.0), 1.0) * $question->maxgrade;
+    $state->penalty = $question->penalty * $question->maxgrade;
+
+    // mark state as graded
+    $state->event = ($state->event == QUESTION_EVENTCLOSE) ?
+      QUESTION_EVENTCLOSEANDGRADE : QUESTION_EVENTGRADE;
+
+    return true;
+
+  } // grade_responses
+  */
   /**************************************************************
    * Backup the data in the question
    *
