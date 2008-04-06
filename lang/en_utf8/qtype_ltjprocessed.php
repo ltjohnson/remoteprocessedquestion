@@ -25,6 +25,8 @@ $string['ltj_missingservername'] = 'Server Name Missing.';
 $string['ltj_serverurl'] = 'Server URL';
 $string['ltj_missingserverurl'] = 'Server URL Missing.';
 $string['ltj_couldnotsaveinfo'] = 'Server info save failed.';
+$string['ltj_needserverid'] = 'Need a serverid';
+$string['ltj_testserver'] = "Test A Remote Server";
 
 $string['ltj_deleteconfigareyousure'] = 'Are you sure you want to delete the configuration of server $a?';
 $string['ltj_deletefailed'] = 'Error when trying to delete the server configuration';

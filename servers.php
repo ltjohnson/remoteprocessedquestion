@@ -13,7 +13,7 @@ require_once(dirname(__FILE__) . '/locallib.php');
 
 // Check the user is logged in.
 require_login();
-if (!has_capability('moodle/question:config', get_context_instance(CONTEXT_SYSTEM, SITEID))) {
+if (!has_capability('moodle/quiz:config', get_context_instance(CONTEXT_SYSTEM, SITEID))) {
     print_error('restricteduser');
 }
 
