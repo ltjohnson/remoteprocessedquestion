@@ -208,7 +208,7 @@ class ltjprocessed_qtype extends default_questiontype
   /******************************************************************
    * The actual remote stuff
    */
-  function process_question(&$question, $attemptid) {
+  function process_question(&$question, &$state, $attemptid) {
     $server = get_record(ltj_serv_tbl(), 'id', $question->options->serverid);
     if (!$server) {
       return "";
@@ -234,14 +234,15 @@ class ltjprocessed_qtype extends default_questiontype
     $url    = $server->serverurl;
     $method = 'processquestion';
 
-    $processed = xmlrpc_request($url, $method, $request);
-    if (array_key_exists('faultCode', $processed)) {
-      echo "Error processing question: faultCode[". $processed['faultCode'];
-      echo "], faultString[".$processed['faultString']."]</br>\n";
-      return NULL; 
+    $response = xmlrpc_request($url, $method, $request);
+    if ($response->success == false) {
+      $state->stuwarning = get_string('ltj_studentwarn', 'qtype_ltjprocessed');
+      $state->teachwarning = $response->warning;
+      return NULL;
     }
     // post process variables, mainly to make sure we don't end up with 
     // something completely bogus
+    $processed = $response->data;
     $ret = new stdClass;
     if (isset($processed['questiontext']) && 
 	trim($processed['questiontext']) != '') {
@@ -350,9 +351,15 @@ class ltjprocessed_qtype extends default_questiontype
     $url    = $server->serverurl;
     $method = 'grade';
     $result = xmlrpc_request($url, $method, $request);
-    /* check for errors, fail gracefully, blah blah blah */
+    // fail gracefully
+    if ($result->success == false) {
+      $state->stuwarning = get_string('ltj_studentwarn', 'qtype_ltjprocessed');
+      $state->teachwarning = $response->warning;
+      return array();
+    }
+    // make a list of the correct answers
     $ret = array();
-    foreach($result as $r) {
+    foreach($result->data as $r) {
       if ($r != 0) {
 	$ret[$r] = 1;
       }
@@ -364,7 +371,8 @@ class ltjprocessed_qtype extends default_questiontype
   function create_session_and_responses(&$question, &$state, $cmoptions, $attempt) {
     global $QTYPES;
     // remote process the question
-    $newq = $QTYPES[$question->qtype]->process_question($question, $attempt->id);
+    $newq = $QTYPES[$question->qtype]->process_question($question, $state, 
+							$attempt->id);
     if ($newq != NULL && isset($newq->questiontext)) {
       $question->questiontext = $newq->questiontext;
     }
@@ -432,6 +440,13 @@ class ltjprocessed_qtype extends default_questiontype
       $question->questiontext = urldecode($output['qtext']);
     }
     
+    if (array_key_exists('stuwarning', $output)) {
+      $state->stuwarning = urldecode($output['stuwarning']);
+    }
+    if (array_key_exists('teachwarning', $output)) {
+      $state->teachwarning = urldecode($output['teachwarning']);
+    }
+
     if (array_key_exists('genimage', $output)) {
       $question->options->genimage = urldecode($output['genimage']);
     }
@@ -475,12 +490,24 @@ class ltjprocessed_qtype extends default_questiontype
     if (!(empty($state->responses) && empty($state->responses['']))) {
       $student_ans = $state->responses[''];
     }
+    /*
+     * There is probably a smarter php way to do this with variable
+     * names and stuff like that
+     */
     // build an array to implode and store
     $state_str = "sans=".urlencode($student_ans).
       "&qtext=".urlencode($question->questiontext);
 
     if (isset($state->ansid)) {
       $state_str .= "&ansid=".urlencode($state->ansid);
+    }
+
+    // add warnings if they exist
+    if (isset($state->stuwarning)) {
+      $state_str .= "&stuwarning=".urlencode($state->stuwarning);
+    }
+    if (isset($state->teachwarning)) {
+      $state_str .= "&teachwarning=".urlencode($state->teachwarning);
     }
     // add the generated image if we have one
     if (isset($question->options->genimage)) {
@@ -517,6 +544,30 @@ class ltjprocessed_qtype extends default_questiontype
     $questiontext = $this->format_text($question->questiontext,
 				       $question->questiontextformat, 
 				       $cmoptions);
+    /*****************************************************************
+     *
+     * Create warning messages if they are available, we need to verify 
+     * that this person has appropriate permissions to see teacher 
+     * warnings
+     *
+     *****************************************************************/
+    // no special permissions needed for knowing that there is a general 
+    // warning
+    $student_warning = NULL;
+    if (isset($state->stuwarning) && $state->stuwarning != NULL) {
+      $student_warning = $state->stuwarning;
+    }
+    
+    $teacher_warning = NULL;
+    if (isset($state->teachwarning) && $state->teachwarning != NULL) {
+      // check permission to see warning
+      if (has_capability('mod/quiz:manage', 
+			 get_context_instance(CONTEXT_COURSE, 
+					      $cmoptions->course))) {
+	$teacher_warning = $state->teachwarning;
+      }
+    }
+    /*****************************************************************/
     $image = get_question_image($question, $cmoptions->course);
     
     $genimage = NULL;

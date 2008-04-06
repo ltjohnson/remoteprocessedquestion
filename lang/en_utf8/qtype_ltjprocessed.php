@@ -33,5 +33,7 @@ $string['ltj_testconnection'] = 'Test Connection';
 $string['ltj_configuredservers'] = 'Configured question servers';
 $string['ltj_noservers'] = 'There are no configured remote servers.';
 $string['ltj_addserver'] = 'Add another server';
+// Student response stuff
+$string['ltj_studentwarn'] = "There was a problem processing this question.  Your instructor will have more details."
 
 ?>

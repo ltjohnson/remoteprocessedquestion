@@ -144,25 +144,29 @@ function cmp_id($a, $b) {
  *  returns the xml from the server
  */
 function do_rpc_call($url, $request) {
-	$header[] = "Content-type: text.xml";
-	$header[] = "Content-length: ".strlen($request);
+  $header[] = "Content-type: text.xml";
+  $header[] = "Content-length: ".strlen($request);
 
-	$crl = curl_init();
-	curl_setopt($crl, CURLOPT_URL, $url);
-	curl_setopt($crl, CURLOPT_RETURNTRANSFER, 1);
-	curl_setopt($crl, CURLOPT_TIMEOUT, 10);
-	curl_setopt($crl, CURLOPT_HTTPHEADER, $header);
-	curl_setopt($crl, CURLOPT_POSTFIELDS, $request);
+  $crl = curl_init();
+  curl_setopt($crl, CURLOPT_URL, $url);
+  curl_setopt($crl, CURLOPT_RETURNTRANSFER, 1);
+  curl_setopt($crl, CURLOPT_TIMEOUT, 10);
+  curl_setopt($crl, CURLOPT_HTTPHEADER, $header);
+  curl_setopt($crl, CURLOPT_POSTFIELDS, $request);
 
-	$data = curl_exec($crl);
-	if (curl_errno($crl)) {
-		echo "RECEIVED curl_errno: ". curl_errno($crl) .": ". curl_error($crl)."</br>";
-		curl_close($crl);
-	} else {
-		curl_close($crl);
-		$xml = substr($data, strpos($data, "<methodResponse>"));
-		return $xml;
-	}
+  $data = curl_exec($crl);
+  $response = new stdClass;
+  $response->success = true;
+  $response->data    = NULL;
+  $response->warning = NULL;
+  if (curl_errno($crl)) {
+    $response->success = false;
+    $response->warning = "RECEIVED curl_errno: ". curl_errno($crl) .": ". curl_error($crl);
+  } else {
+    $response->data = substr($data, strpos($data, "<methodResponse>"));
+  }
+  curl_close($crl);
+  return $response;
 }
 /*
  *  function xmlrpc_request
@@ -170,11 +174,25 @@ function do_rpc_call($url, $request) {
  *  $method -- method to request form the server
  *  $args   -- php args to send in the request
  *  this function handles all the details of an xmlrpc request to a remote 
- *  server, returning a php version of the response
+ *  server, returning a php class containing three variables
+ *  'success' true or false for success of request
+ *  'warning' a string containing a warning if the request was not successful
+ *  'data' a php version of the response if the request was successful
  */
 function xmlrpc_request($server, $method, $args) {
-	$request = xmlrpc_encode_request($method, $args);
-	$xml     = do_rpc_call($server, $request);
-	$phpvars = xmlrpc_decode($xml);
-	return $phpvars;
+  $request  = xmlrpc_encode_request($method, $args);
+  $response = do_rpc_call($server, $request);
+  if ($response->success) {
+    $response->data  = xmlrpc_decode($response->data);
+    // Not quite done looking for errors yet, we need to see if 
+    // a faultcode was sent back
+    if (array_key_exists('faultCode', $response->data)) {
+      $response->success = false;
+      $response->warning = "Error processing question: </br>".
+	"faultCode[". $response->data['faultCode'] . "] </br>".
+	"faultString[". $response->data['faultString'] . "] </br>";
+      $response->data = NULL;
+    }
+  }
+  return $response;
 }

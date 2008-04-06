@@ -1,3 +1,15 @@
+<?php if ($student_warning) { ?>
+<div class="errorbox">
+  <?php echo $student_warning; ?>
+</div>
+<?php } ?>
+
+<?php if ($teacher_warning) { ?>
+<div class="errorbox">
+  <?php echo $teacher_warning; ?>
+</div>
+<?php } ?>
+
 <div class="qtext">
     <?php echo $questiontext; ?>
 </div>
