@@ -15,8 +15,6 @@
 function ltj_tbl()          { return 'question_ltjprocessed'; }
 function ltj_ans_tbl()      { return 'question_ltjprocessed_answers'; }
 function ltj_serv_tbl()     { return 'question_ltjprocessed_servers'; }
-function ltj_state_tbl()    { return 'question_ltjprocessed_states'; }
-function ltj_ansstate_tbl() { return 'question_ltjprocessed_ans_states'; }
 function ans_tbl()          { return 'question_answers'; }
 
 /*************************************************************
@@ -85,47 +83,11 @@ function restore_server_record($server, $prestring="RESTORED") {
  * lists installed servers in a menu form for edit_ltjprocessed
  */
 function installed_server_choices() {
-  return get_records_menu(ltj_serv_tbl(), '', '', 'servername ASC', 'id, servername');
-  }
-
-/*************************************************************
- * misc functions to support xml-rpc stuff
- */
-function get_post_url_contents($url, $urlvars) {
-  $crl = curl_init();
-  curl_setopt($crl, CURLOPT_URL, $url);
-  curl_setopt($crl, CURLOPT_HEADER, 0);
-  curl_setopt($crl, CURLOPT_RETURNTRANSFER, 1);
-  curl_setopt($crl, CURLOPT_POST, 1);
-  curl_setopt($crl, CURLOPT_POSTFIELDS, $urlvars);
-  $ret = curl_exec($crl);
-  curl_close($crl);
-  return $ret;
+  return get_records_menu(ltj_serv_tbl(), '', '', 'servername ASC', 
+			  'id, servername');
 }
 
-function ltj_implode($arr) {
-  $ret = array();
-  ksort($arr);
-  foreach($arr as $key => $value) {
-    $ret[] = $key . '-' . str_replace(',', '\,', $value);
-  }
-  return implode(',', $ret);
-}
-
-function ltj_explode($str) {
-  if ($str == '') {
-    return array();
-  }
-  // split string on non-backslashed commas.
-  $sp = preg_split('/(?<!\\\\)\,/', $str);
-  $arr = array();
-  foreach($sp as $sc) {
-    list($key, $val) = explode('-', $sc, 2);
-    $arr[$key] = str_replace('\,', ',', $val);
-  }
-  return $arr;
-}
-
+/*************************************************************/
 /* helper function for sorting */
 function cmp_id($a, $b) {
   if ($a->id == $b->id) {
