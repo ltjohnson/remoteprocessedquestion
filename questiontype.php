@@ -432,7 +432,7 @@ class ltjprocessed_qtype extends default_questiontype
       $state->responses[''] = "";
     }
 
-    if (array_key_exists("ansid", $ouput)) {
+    if (array_key_exists("ansid", $output)) {
       $state->ansid = urldecode($output['ansid']);
     }
 
@@ -595,8 +595,8 @@ class ltjprocessed_qtype extends default_questiontype
     
     // TODO prepare any other data necessary. For instance
     $feedback = '';
-    if ($options->feedback && $state->ansid) {
-      foreach($question->options->answer as $answer) {
+    if ($options->feedback && isset($state->ansid) && $state->ansid != 0) {
+      foreach($question->options->answers as $answer) {
 	if ($answer->id == $state->ansid) {
 	  $feedback = $answer->feedback;
 	  break;
