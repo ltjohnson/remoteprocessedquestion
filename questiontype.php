@@ -79,7 +79,7 @@ class ltjprocessed_qtype extends default_questiontype
       $answer->answer     = trim($question->answer[$idx]);
       $answer->fraction   = isset($question->fraction[$idx]) ?
 	trim($question->fraction[$idx]) : 1.0;
-      $answer->feedback = trim($question->feedback[$key]);
+      $answer->feedback = trim($question->feedback[$idx]);
       
       $extra              = new stdClass;
       $extra->question    = $question->id;
