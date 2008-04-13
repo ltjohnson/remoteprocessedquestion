@@ -13,7 +13,7 @@ require_once(dirname(__FILE__) . '/locallib.php');
 
 // Check the user is logged in.
 require_login();
-if (!has_capability('moodle/quiz:manage', 
+if (!has_capability('mod/quiz:manage', 
 		    get_context_instance(CONTEXT_SYSTEM, SITEID))) {
   print_error('restricteduser');
 }
@@ -49,6 +49,7 @@ array_push($table->data, array("Server URL", $server->serverurl));
 /* do status request */
 $response = xmlrpc_request($server->serverurl, 'status', array());
 if ($response->success == false) {
+  echo '<div class="errorbox">'. $response->warning. '</div>';
   array_push($table->data, array("WARNING", $response->warning));
 } else {
   /* print table of results */
@@ -57,7 +58,7 @@ if ($response->success == false) {
   }
 }
 
-/* close out page */
+/* Print table, then close out page */
 print_table($table);
 print_simple_box_end();
 print_footer();
