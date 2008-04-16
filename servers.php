@@ -2,7 +2,7 @@
 /**
  * This page lets admins configure Remote Processed question servers.
  *
- * @copyright &copy; 2007 Leif Johnson
+ * @copyright &copy; 2008 University of Minnesota, Twin Cities
  * @author Leif Johnson; leif.t.johnson@gmail.com
  * @license http://www.gnu.org/copyleft/gpl.html GNU Public License
  * @package ltjprocessed

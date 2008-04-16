@@ -2,10 +2,10 @@
 /**
  * Unit tests for this question type.
  *
- * @copyright &copy; 2007 Leif Johnson
- * @author leif.t.johnson@gmail.com
+ * @copyright &copy; 2008 University of Minnesota, Twin Cities
+ * @author Leif Johnson; leif.t.johnson@gmail.com
  * @license http://www.gnu.org/copyleft/gpl.html GNU Public License
- * @package ltj_processed
+ * @package ltjprocessed
  *//** */
     
 require_once(dirname(__FILE__) . '/../../../../config.php');
