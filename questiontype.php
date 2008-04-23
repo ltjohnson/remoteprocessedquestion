@@ -943,7 +943,7 @@ class ltjprocessed_qtype extends default_questiontype
     
     $ansml->appendChild($doc->createElement('answer', $answer->answer));
     $ansml->appendChild($doc->createElement('fraction', $answer->fraction));
-    $ansml->appendChild($doc->createElement('feedback', $answer->fraction));
+    $ansml->appendChild($doc->createElement('feedback', $answer->feedback));
     $ansml->appendChild($doc->createElement('tolerance', $answer->tolerance));
     
     return $ansml;
