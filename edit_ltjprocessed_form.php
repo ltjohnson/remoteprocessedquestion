@@ -32,7 +32,7 @@ class question_edit_ltjprocessed_form extends question_edit_form {
 
     // variables element 
     $lbl   = get_string('ltj_variables', 'qtype_ltjprocessed');
-    $attrs = array('rows'      => 4, 
+    $attrs = array('rows'      => 10, 
 		   'cols'      => 60);
     $variable_element = 
       $mform->createElement('textarea', 'variables', $lbl, $attrs);
@@ -62,11 +62,12 @@ class question_edit_ltjprocessed_form extends question_edit_form {
     $repeatedoptions = array();
     $repeated[] =& $mform->createElement('header', 'answerhdr', 
 					 get_string('ltj_answerno', 'qtype_ltjprocessed', '{no}'));
+	$ansattrs = array('size' => 60);
     $repeated[] =& $mform->createElement('text', 'answer', 
-					 get_string('answer', 'quiz'));
+					 get_string('answer', 'quiz'), $ansattrs);
     $mform->setType('answer', PARAM_RAW);
     $repeated[] =& $mform->createElement('text', 'tolerance', 
-					 get_string('acceptederror', 'quiz'));
+					 get_string('acceptederror', 'quiz'), $ansattrs);
     $mform->setType('tolerance', PARAM_RAW);
     $repeated[] =& $mform->createElement('select', 'fraction', 
 					 get_string('grade'), $gradeoptions);
