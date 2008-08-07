@@ -158,3 +158,55 @@ function xmlrpc_request($server, $method, $args) {
   }
   return $response;
 }
+/****************************************************************************/
+/* a helpful function to insert a warning into the $state variable */
+function ltj_insertwarning($warning, &$state) {
+  if (isset($state->stuwarning) == FALSE) {
+    $state->stuwarning = get_string('ltj_studentwarn', 'qtype_ltjprocessed');
+  }
+  $tmp = "";
+  if (isset($state->teachwarning)) {
+    $tmp = $state->teachwarning . " <br />";
+  }
+  $state->teachwarning = $tmp . $warning;
+}
+
+/****************************************************************************/
+/* a function to save a file, it takes care of inserting appropriate errors 
+ * into the state if there is a problem.  
+ * returns:
+ * TRUE  -- everything was fine
+ * FALSE -- there was a problem. it was reported in the state-> sections.
+ */
+function ltj_savefile($data, $dir, $fname, &$state) {
+  $filename = $dir . "/" . $fname;
+  $fh = fopen($filename, "w");
+  if ($fh == FALSE) {
+    ltj_insertwarning("Error Opening " . $filename . " for writing", $state);
+    return FALSE;
+  }
+  $write_result = fwrite($fh, $data);
+  fclose($fh); // okay because fclose(FALSE) is a noop
+  if ($write_result == FALSE) {
+    ltj_insertwarning("Error writing to ". $filename, $state);
+    return FALSE;
+  }
+  return TRUE;
+}
+
+/* same idea, but for reading a file */
+function ltj_readfile($dir, $fname, &$state) {
+  $filename = $dir . "/" . $fname;
+  $fh = fopen($filename, "rb");
+  if ($fh == FALSE) {
+    ltj_insertwarning("Error opening ". $filename . " for reading", $state);
+    return FALSE;
+  }
+  $filedata = fread($fh, filesize($filename));
+  fclose($fh); // this is okay, because fclose(FALSE) is a noop
+  if ($filedata == FALSE) {
+    ltj_insertwarning("Error reading ". $filename, $state);
+    return FALSE;
+  }
+  return $filedata;
+}

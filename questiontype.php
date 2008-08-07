@@ -168,14 +168,12 @@ class ltjprocessed_qtype extends default_questiontype
     
     foreach($states as $stateid) {
       $state = get_record("question_states", "id", "$stateid");
-      $attemptid  = $state->attempt;
-      $questionid = $state->question;
       
       // Delete files for this attempt.  This actually deletes files for 
       // ALL of the questions for this attempt, but that is okay because
       // this function is never called unless the entire attempt is being 
       // deleted.
-      $dir = question_file_area_name($attemptid, $questionid);
+      $dir = question_file_area_name($state->attempt, $state->question);
       if (file_exists($CFG->dataroot.'/'.$dir)) {
 	fulldelete($CFG->dataroot.'/'.$dir);
 	// delete the second level if there is one
@@ -236,8 +234,7 @@ class ltjprocessed_qtype extends default_questiontype
 
     $response = xmlrpc_request($url, $method, $request);
     if ($response->success == false) {
-      $state->stuwarning = get_string('ltj_studentwarn', 'qtype_ltjprocessed');
-      $state->teachwarning = $response->warning;
+      ltj_insertwarning($response->warning, $state);
       return NULL;
     }
     // post process variables, mainly to make sure we don't end up with 
@@ -252,18 +249,18 @@ class ltjprocessed_qtype extends default_questiontype
      * Images and workpspaces are sent as base64 encoded blobs.  We need 
      * to decode them and save them in an appropriate place
      */
+    $dir = question_file_area_name($state->attempt, $question->id);
     if (array_key_exists('image', $processed) && isset($processed['image'])) {
       $imgdata = base64_decode($processed['image']);
-      // get the image dir
-      $dir = question_file_area_name($attemptid, $question->id);
       $basedir = question_file_area($dir);
+      // get the image dir
       if($basedir) {
-	// TODO: make this name unique;
 	$imgname = "genimage.png";
-	$imgfile = fopen($basedir ."/".$imgname, "w");
-	fwrite($imgfile, $imgdata);
-	fclose($imgfile);
-	$ret->genimage = $imgname;
+	if (ltj_savefile($imgdata, $basedir, $imgname, $state)) {
+	  $ret->genimage = $imgname;
+	}
+      } else {
+	ltj_insertwarning("Unable to open ". $basedir, $state);
       }
     }
     
@@ -273,15 +270,15 @@ class ltjprocessed_qtype extends default_questiontype
       // is send it back, but this *should* save a little diskspace over
       // writing the file as base64_encoded 
       $workdata = base64_decode($processed['workspace']);
-      $dir = question_file_area_name($attemptid, $question->id);
       $basedir = question_file_area($dir);
       if($basedir) {
 	// TODO: make this name unique.
 	$workname = "workspace.dat";
-	$workfile = fopen($basedir ."/". $workname, "w");
-	fwrite($workfile, $workdata);
-	fclose($workfile);
-	$ret->workspace = $workname;
+	if (ltj_savefile($workdata, $basedir, $workname, $state)) {
+	  $ret->workspace = $workname;
+	}
+      } else {
+	ltj_insertwarning("Unable to open ". $basedir, $state);
       }
     }
     /*****************************************************************
@@ -325,13 +322,12 @@ class ltjprocessed_qtype extends default_questiontype
 
     // attach workspace if it exists
     if ($question->options->workspace) {
-      $filename = $CFG->dataroot . '/' . 
-	question_file_area_name($state->attempt, $question->id) .
-	"/". $question->options->workspace;
-      $filein = fopen($filename, "rb");
-      $filedata = fread($filein, filesize($filename) );
-      fclose($filein);
-      $request['workspace'] = base64_encode($filedata);
+      $dir = $CFG->dataroot . '/' . 
+	question_file_area_name($state->attempt, $question->id);
+      $filedata = ltj_readfile($dir, $question->options->workspace, $state);
+      if ($filedata) {
+	$request['workspace'] = base64_encode($filedata);
+      }
     }
 
     $request['studentans'] = $state->responses[''];
@@ -352,9 +348,13 @@ class ltjprocessed_qtype extends default_questiontype
     $method = 'grade';
     $result = xmlrpc_request($url, $method, $request);
     // fail gracefully
-    if ($result->success == false) {
-      $state->stuwarning = get_string('ltj_studentwarn', 'qtype_ltjprocessed');
-      $state->teachwarning = $response->warning;
+    if ($result->success == FALSE) {
+      if (isset($response->warning)) {
+	ltj_insertwarning($response->warning, $state);
+      } else {
+	ltj_insertwarning("Unknown error with xml-rpc request trying to remote grade question",
+			  $state);
+      }
       return array();
     }
     // make a list of the correct answers

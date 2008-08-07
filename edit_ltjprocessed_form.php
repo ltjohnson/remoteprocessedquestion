@@ -62,7 +62,7 @@ class question_edit_ltjprocessed_form extends question_edit_form {
     $repeatedoptions = array();
     $repeated[] =& $mform->createElement('header', 'answerhdr', 
 					 get_string('ltj_answerno', 'qtype_ltjprocessed', '{no}'));
-	$ansattrs = array('size' => 60);
+	$ansattrs = array('size' => 55);
     $repeated[] =& $mform->createElement('text', 'answer', 
 					 get_string('answer', 'quiz'), $ansattrs);
     $mform->setType('answer', PARAM_RAW);
