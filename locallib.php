@@ -65,8 +65,9 @@ function restore_server_record($server, $prestring="RESTORED") {
     if (!$servermatch) {
       // we have matching urls, but no name matches
       // let's just grab the first one, cause it's the same url
-      $server->id = $servers[0]->id;
-      $server->servername = $servers[0]->servername;
+      $srv = array_shift($servers);
+      $server->id = $srv->id;
+      $server->servername = $srv->servername;
       $servermatch = true;
     }
   }
