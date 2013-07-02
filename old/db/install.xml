@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<XMLDB PATH="question/type/ltjprocessed/db" VERSION="20060825" COMMENT="XMLDB file for this question type">
+  <TABLES>
+    <TABLE NAME="question_ltjprocessed_servers" COMMENT="Servers that the Remote Processed Question will use" NEXT="question_ltjprocessed">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="true" ENUM="false" COMMENT="id of the table" NEXT="servername"/>
+	<FIELD NAME="servername" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" ENUM="false" COMMENT="Display name of the server" PREVIOUS="id" NEXT="serverurl"/>
+	<FIELD NAME="serverurl" TYPE="char" LENGTH="511" NOTNULL="true" SEQUENCE="false" ENUM="false" COMMENT="URL of server" PREVIOUS="servername"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id" COMMENT="primary key of the table"/>	
+      </KEYS>
+    </TABLE>
+    <TABLE NAME="question_ltjprocessed" COMMENT="Question templates for Remote Processed Questions" PREVIOUS="question_ltjprocessed_servers" NEXT="question_ltjprocessed_answers">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="true" ENUM="false" NEXT="question"/>
+        <FIELD NAME="question" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="false" ENUM="false" PREVIOUS="id" NEXT="serverid"/>
+        <FIELD NAME="serverid" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="false" ENUM="false" PREVIOUS="question" NEXT="variables"/>
+        <FIELD NAME="variables" TYPE="text" NOTNULL="false" UNSIGNED="true" SEQUENCE="false" ENUM="false" PREVIOUS="serverid" NEXT="imagecode"/>
+        <FIELD NAME="imagecode" TYPE="text" NOTNULL="false" UNSIGNED="true" SEQUENCE="false" ENUM="false" PREVIOUS="variables" NEXT="remotegrade"/>
+        <FIELD NAME="remotegrade" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" ENUM="false" PREVIOUS="imagecode"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id" COMMENT="primary key of the table" NEXT="question"/>	
+        <KEY NAME="question" TYPE="foreign" FIELDS="question" REFTABLE="questions" REFFIELDS="id" PREVIOUS="primary" NEXT="serverid"/> 
+        <KEY NAME="serverid" TYPE="foreign" FIELDS="serverid" REFTABLE="question_ltjprocessed_servers" REFFIELDS="id" PREVIOUS="question"/> 
+      </KEYS>
+    </TABLE>
+    <TABLE NAME="question_ltjprocessed_answers" COMMENT="Extra fields for answers for ltjprocessed questions" PREVIOUS="question_ltjprocessed">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="true" ENUM="false" COMMENT="id of the table" NEXT="question"/>
+        <FIELD NAME="question" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="false" ENUM="false" PREVIOUS="id" NEXT="answer"/>
+        <FIELD NAME="answer" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="false" ENUM="false" PREVIOUS="question" NEXT="tolerance"/>
+        <FIELD NAME="tolerance" TYPE="char" LENGTH="255" NOTNULL="true" DEFAULT="0.0" SEQUENCE="false" ENUM="false" PREVIOUS="answer"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id" COMMENT="primary key of the table" NEXT="question"/>	
+        <KEY NAME="question" TYPE="foreign" FIELDS="question" REFTABLE="questions" REFFIELDS="id" PREVIOUS="primary" NEXT="answer"/> 
+        <KEY NAME="answer" TYPE="foreign" FIELDS="answer" REFTABLE="question_answers" REFFIELDS="id" PREVIOUS="question"/> 
+      </KEYS>
+    </TABLE>
+  </TABLES>
+</XMLDB>
