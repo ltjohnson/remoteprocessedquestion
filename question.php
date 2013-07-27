@@ -37,6 +37,10 @@ defined('MOODLE_INTERNAL') || die();
  */
 class qtype_remoteprocessed_question extends question_graded_automatically_with_countback {
 
+    public start_attempt(question_attempt_step $step, $variant) {
+        
+    }
+
     public function get_expected_data() {
         // TODO.
         return array();
@@ -92,4 +96,38 @@ class qtype_remoteprocessed_question extends question_graded_automatically_with_
         // TODO.
         return 0;
     }
+
+    // Functions for communicating with the remote server.
+    private function create_xml_rpc_request_args() {
+      $server = $this->options->server;
+      // Handle missing server.
+      $url = $server->serverurl;
+
+      // Create rpc request vars.
+      $request = array();
+      $request['variables'] = $this->options->variables;
+
+      $imagecode = trim($this->options->imagecode);
+      if ($imagecode) {
+	$request['imagecode'] = $imagecode;
+      }
+      $request['questiontext'] = $this->questiontext;
+      $request['remotegrade'] = $this->options->remotegrade;
+      $request['answers'] = array();
+      
+      foreach ($this->options->answers as $answer) {
+	array_push($request['answers'],
+		   array('ansid'     => $answer->id, 
+			 'answer'    => $answer->answer,
+			 'tolerance' => $answer->tolerance));
+      }
+      
+      $request['numanswers'] = count($request['answers']);
+
+      
+      return array('url' => $url, 
+		   'method' => 'processquestion', 
+		   'request' => $request);
+    }
+
 }

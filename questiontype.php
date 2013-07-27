@@ -54,6 +54,35 @@ class qtype_remoteprocessed extends question_type {
     public function save_question_options($question) {
         $this->save_hints($question);
     }
+    
+    public function get_question_options($question) {
+      GLOBAL $DB;
+      
+      $question->options = $DB->get_record(<TBL NAME>, array('question' => $question->id));
+
+      if (!$question->options) {
+	// Default question options.
+	$question->options = new stdClass();
+
+	$question->options->serverid    = 0;
+	$question->options->variables   = "";
+	$question->options->imagecode   = "";
+	$question->options->remotegrade = 0;
+	$question->options->answers     = array();
+      }
+      
+      $question->options->answers = $DB->get_records_sql("
+        SELECT 
+          qa.*
+          qra.<STUFF>
+        FROM
+          question_answers qa, question_remoteprocessed_answer qra
+        WHERE
+          qa.question = ?
+        AND
+          qa.id = qra.answer", array("question" => $question->id));
+      // Error if answers fail to load?
+    }
 
     protected function initialise_question_instance(question_definition $question, $questiondata) {
         // TODO.
@@ -69,4 +98,5 @@ class qtype_remoteprocessed extends question_type {
         // TODO.
         return array();
     }
+    
 }
