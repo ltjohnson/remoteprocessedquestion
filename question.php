@@ -20,7 +20,6 @@
  * @package    qtype
  * @subpackage remoteprocessed
  * @copyright  2013 Leif Johnson (leif.t.johnson@gmail.com)
-
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -128,6 +127,21 @@ class qtype_remoteprocessed_question extends question_graded_automatically_with_
       return array('url' => $url, 
 		   'method' => 'processquestion', 
 		   'request' => $request);
+    }
+
+    // Some utility functions.
+    protected function default_answer() {
+      $answer = (object) array("answer" => "", 
+			       "answerformat" => 1,
+			       "fraction" => 1.0,
+			       "feedback" => "",
+			       "feedbackformat" => 0);
+      return $answer;
+    }
+    
+    protected function default_answerdata() {
+      $answerdata = (object) array("tolerance" => "0.0");
+      return $answerdata;
     }
 
 }

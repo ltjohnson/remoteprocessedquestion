@@ -20,14 +20,13 @@
  * @package    qtype
  * @subpackage remoteprocessed
  * @copyright  2013 Leif Johnson (leif.t.johnson@gmail.com)
-
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 
 defined('MOODLE_INTERNAL') || die();
 
-require_once($CFG->libdir . '/questionlib.php');
+require_once($CFG->libdir  . '/questionlib.php');
 require_once($CFG->dirroot . '/question/engine/lib.php');
 require_once($CFG->dirroot . '/question/type/remoteprocessed/question.php');
 
@@ -52,29 +51,129 @@ class qtype_remoteprocessed extends question_type {
     }
 
     public function save_question_options($question) {
-        $this->save_hints($question);
+      GLOBAL $DB;
+
+      $this->save_hints($question);
+      
+      $update = true;
+      $options = $DB->get_record("question_remoteprocessed", 
+				 array("question" => $question->id));
+      if (!$options) {
+	$update = false;
+	$options = new stdClass();
+	$options->question = $question->id;
+      }
+      
+      foreach (array("serverid", "variables", "imagecode", "remotegrade") as 
+	       $key) {
+	$options->{$key} = $question->options->{$key};
+      }
+
+      if ($update) {
+	$DB->update_record('question_remoteprocessed', $options);
+      } else {
+	$DB->insert_record('question_remoteprocessed', $options);
+      }
+      
+      // Now save the question answers.  Answer data is mixed between two 
+      // tables.
+      //
+      // 1. Get the old answers and answer supplemental data.
+      // 2. Loop through the answers we have to save, update or add each element
+      //    as necessary.
+      // 3. Any answers and answer supplemental data left over is deleted.
+      $oldanswers = $DB->get_records("question_answer", 
+				     array("question" => $question->id),
+				     "id ASC");
+      $oldremoteanswers = $DB->get_records("question_remoteprocessed_answer",
+					   array("question" => $question->id),
+					   "answer ASC");
+      
+      foreach ($question->answers as $key => $answerdata) {
+
+	if (!empty($oldanswers)) {
+	  $answer = shift($oldanswers);
+	} else {
+	  $answer = $question->default_answer();
+	}
+
+	foreach ($answer as $akey => $tmp) {
+	  if (isset($answerdata->{$akey})) {
+	    $answer->{$akey} = $answerdata->{$akey};
+	  }
+	}
+	
+	if (isset($answer->id)) {
+	  $DB->update_record("question_answers", $answer);
+	} else {
+	  $answer->id = $DB->insert_record("question_answers", $answer);
+	}
+
+	// Save the extra answer data.
+	if (!empty($oldremoteanswers)) {
+	  $rp_answer = shift($oldremoteanswers);
+	} else {
+	  $rp_answer = $question->default_remoteprocessed_answer();
+	}
+	
+	$rp_answer->question = $question->id;
+	$rp_answer->answer   = $answer->id;
+	
+	foreach ($rp_answer as $rpkey => $tmp) {
+	  if (isset($answerdata->{$rpkey})) {
+	    $remoteprocessed_answer->{$rpkey} = $answerdata->{$rpkey};
+	  }
+	}
+	
+	if (isset($rp_answer->id)) {
+	  $DB->update_record("question_remoteprocessed_answers", $rp_answer);
+	} else {
+	  $rp->id = $DB->insert_record("question_remoteprocessed_answers", 
+				       $rp_answer);
+	}
+	
+      }
+      
+      // Delete left over records.
+      if (!empty($oldanswers)) {
+	foreach ($oldanswers as $oa) {
+	  $DB->delete_records("question_answer", array("id" => $oa->id));
+	}
+      }
+      
+      if (!empty($oldremoteanswers)) {
+	foreach ($oldremoteanswers as $ora) {
+	  $DB->delte_records("question_remoteprocessed_answers",  
+			     array("id" => $ora->id));
+	}
+      }
     }
     
     public function get_question_options($question) {
       GLOBAL $DB;
       
-      $question->options = $DB->get_record(<TBL NAME>, array('question' => $question->id));
+      $question->options = $DB->get_record("question_remoteprocessed", 
+					   array("question" => $question->id));
 
       if (!$question->options) {
 	// Default question options.
-	$question->options = new stdClass();
-
-	$question->options->serverid    = 0;
-	$question->options->variables   = "";
-	$question->options->imagecode   = "";
-	$question->options->remotegrade = 0;
-	$question->options->answers     = array();
+	$question->options = (object) array("serverid" => 0,
+					    "variables" => "",
+					    "imagecode" => "",
+					    "remotegrade" => 0,
+					    "answers" => array());
+      }
+      
+      if ($question->options->serverid != 0) {
+	$question->options->server =
+	  $DB->get_record("question_remoteprocessed_servers",
+			  array("id" => $question->options->serverid));
       }
       
       $question->options->answers = $DB->get_records_sql("
         SELECT 
           qa.*
-          qra.<STUFF>
+          qra.tolerance
         FROM
           question_answers qa, question_remoteprocessed_answer qra
         WHERE
@@ -97,6 +196,6 @@ class qtype_remoteprocessed extends question_type {
     public function get_possible_responses($questiondata) {
         // TODO.
         return array();
-    }
+    }ph
     
 }

@@ -51,4 +51,30 @@ class qtype_remoteprocessed_edit_form extends question_edit_form {
     public function qtype() {
         return 'remoteprocessed';
     }
+    
+    /**
+     * Add question-type specific form fields.
+     *
+     * @param MoodleQuickForm $mform, the form being built.
+     */
+    protected function definition_inner($mform) {
+      // adds the elements specific to this question type to the form used
+      // for editing question data.  This is what an instructor sees when 
+      // editing/creating questions of this type.
+      
+      // Add the variables and image code above the question text.  
+      // Variables goes first, then imagecode, then questiontext, as this is 
+      // the order the code will be evaluated in.
+      $mform->insertElementBefore(
+        $mform->createElement('textarea', 'imagecode', '', 
+			      array('rows' => 5, 'cols' => 80)),
+	'questiontext');
+      $mform->insertElementBefore(
+        $mform->createElement('textarea', 'variables', '',
+			      array('rows' =>15, 'cols' => 80)),
+	'imagecode');
+      
+      // TODO(leif): Add server selection dialog.
+				  
+    }
 }
