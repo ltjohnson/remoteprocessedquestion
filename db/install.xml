@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <XMLDB PATH="question/type/remoteprocessed/db" VERSION="20060825" COMMENT="XMLDB file for this question type">
   <TABLES>
-    <TABLE NAME="question_remoteprocessed_servers" 
+    <TABLE NAME="question_rmtproc_servers" 
            COMMENT="Servers that the Remote Processed Question will use" 
-           NEXT="question_remoteprocessed">
+           NEXT="question_rmtproc">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" 
                SEQUENCE="true" ENUM="false" COMMENT="id of the table" 
@@ -21,10 +21,10 @@
              COMMENT="primary key of the table"/>	
       </KEYS>
     </TABLE>
-    <TABLE NAME="question_remoteprocessed" 
+    <TABLE NAME="question_rmtproc" 
            COMMENT="Question templates for Remote Processed Questions" 
-           PREVIOUS="question_remoteprocessed_servers" 
-           NEXT="question_remoteprocessed_answers">
+           PREVIOUS="question_rmtproc_servers" 
+           NEXT="question_rmtproc_answers">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" 
                SEQUENCE="true" ENUM="false" NEXT="question"/>
@@ -50,13 +50,13 @@
 	     REFTABLE="questions" REFFIELDS="id" PREVIOUS="primary" 
 	     NEXT="serverid"/> 
         <KEY NAME="serverid" TYPE="foreign" FIELDS="serverid" 
-	     REFTABLE="question_remoteprocessed_servers" REFFIELDS="id" 
+	     REFTABLE="question_rmtproc_servers" REFFIELDS="id" 
 	     PREVIOUS="question"/> 
       </KEYS>
     </TABLE>
-    <TABLE NAME="question_remoteprocessed_answers" 
+    <TABLE NAME="question_rmtproc_answers" 
 	   COMMENT="Extra fields for answers for remoteprocessed questions" 
-	   PREVIOUS="question_remoteprocessed">
+	   PREVIOUS="question_rmtproc">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" 
 	       SEQUENCE="true" ENUM="false" COMMENT="id of the table" 

@@ -56,7 +56,7 @@ class qtype_remoteprocessed extends question_type {
       $this->save_hints($question);
       
       $update = true;
-      $options = $DB->get_record("question_remoteprocessed", 
+      $options = $DB->get_record("question_rmtproc", 
 				 array("question" => $question->id));
       if (!$options) {
 	$update = false;
@@ -70,9 +70,9 @@ class qtype_remoteprocessed extends question_type {
       }
 
       if ($update) {
-	$DB->update_record('question_remoteprocessed', $options);
+	$DB->update_record('question_rmtproc', $options);
       } else {
-	$DB->insert_record('question_remoteprocessed', $options);
+	$DB->insert_record('question_rmtproc', $options);
       }
       
       // Now save the question answers.  Answer data is mixed between two 
@@ -85,7 +85,7 @@ class qtype_remoteprocessed extends question_type {
       $oldanswers = $DB->get_records("question_answer", 
 				     array("question" => $question->id),
 				     "id ASC");
-      $oldremoteanswers = $DB->get_records("question_remoteprocessed_answer",
+      $oldremoteanswers = $DB->get_records("question_rmtproc_answer",
 					   array("question" => $question->id),
 					   "answer ASC");
       
@@ -126,9 +126,9 @@ class qtype_remoteprocessed extends question_type {
 	}
 	
 	if (isset($rp_answer->id)) {
-	  $DB->update_record("question_remoteprocessed_answers", $rp_answer);
+	  $DB->update_record("question_rmtproc_answers", $rp_answer);
 	} else {
-	  $rp->id = $DB->insert_record("question_remoteprocessed_answers", 
+	  $rp->id = $DB->insert_record("question_rmtproc_answers", 
 				       $rp_answer);
 	}
 	
@@ -143,7 +143,7 @@ class qtype_remoteprocessed extends question_type {
       
       if (!empty($oldremoteanswers)) {
 	foreach ($oldremoteanswers as $ora) {
-	  $DB->delte_records("question_remoteprocessed_answers",  
+	  $DB->delte_records("question_rmtproc_answers",  
 			     array("id" => $ora->id));
 	}
       }
@@ -152,7 +152,7 @@ class qtype_remoteprocessed extends question_type {
     public function get_question_options($question) {
       GLOBAL $DB;
       
-      $question->options = $DB->get_record("question_remoteprocessed", 
+      $question->options = $DB->get_record("question_rmtproc", 
 					   array("question" => $question->id));
 
       if (!$question->options) {
@@ -166,7 +166,7 @@ class qtype_remoteprocessed extends question_type {
       
       if ($question->options->serverid != 0) {
 	$question->options->server =
-	  $DB->get_record("question_remoteprocessed_servers",
+	  $DB->get_record("question_rmtproc_servers",
 			  array("id" => $question->options->serverid));
       }
       
@@ -175,7 +175,7 @@ class qtype_remoteprocessed extends question_type {
           qa.*
           qra.tolerance
         FROM
-          question_answers qa, question_remoteprocessed_answer qra
+          question_answers qa, question_rmtproc_answer qra
         WHERE
           qa.question = ?
         AND
