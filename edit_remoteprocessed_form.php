@@ -37,10 +37,6 @@ defined('MOODLE_INTERNAL') || die();
  */
 class qtype_remoteprocessed_edit_form extends question_edit_form {
 
-    protected function definition_inner($mform) {
-        $this->add_interactive_settings();
-    }
-
     protected function data_preprocessing($question) {
         $question = parent::data_preprocessing($question);
         $question = $this->data_preprocessing_hints($question);

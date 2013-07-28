@@ -36,9 +36,11 @@ defined('MOODLE_INTERNAL') || die();
  */
 class qtype_remoteprocessed_question extends question_graded_automatically_with_countback {
 
+  /* Disable, this is incomplete and causes errors.
     public start_attempt(question_attempt_step $step, $variant) {
         
     }
+  */
 
     public function get_expected_data() {
         // TODO.

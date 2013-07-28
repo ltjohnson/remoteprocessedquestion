@@ -196,6 +196,6 @@ class qtype_remoteprocessed extends question_type {
     public function get_possible_responses($questiondata) {
         // TODO.
         return array();
-    }ph
+    }
     
 }
