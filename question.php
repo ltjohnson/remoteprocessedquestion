@@ -139,7 +139,7 @@ class qtype_remoteprocessed_question extends question_graded_automatically_with_
       return $answer;
     }
     
-    protected function default_answerdata() {
+    protected function default_remoteprocessed_answer() {
       $answerdata = (object) array("tolerance" => "0.0");
       return $answerdata;
     }
