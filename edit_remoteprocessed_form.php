@@ -48,6 +48,7 @@ class qtype_remoteprocessed_edit_form extends question_edit_form {
 
     protected function data_preprocessing($question) {
         $question = parent::data_preprocessing($question);
+	$question = $this->data_preprocessing_answers($question, true);
         $question = $this->data_preprocessing_hints($question);
 	
 	foreach (qtype_remoteprocessed_question::$options_keys as $key) {
@@ -85,11 +86,14 @@ class qtype_remoteprocessed_edit_form extends question_edit_form {
 			      array('rows' =>15, 'cols' => 80)),
 	'imagecode');
       
-      // TODO(leif): Add server selection dialog.
       $mform->insertElementBefore(
 	$mform->createElement('select', 'serverid', 'Server', 
                               get_remote_processed_servers()),
 	'variables');
-				  
+			
+      $this->add_per_answer_fields(
+        $mform, get_string('answerhdr', 'qtype_remoteprocessed', '{no}'),
+	question_bank::fraction_options_full(), 
+	1, 1);
     }
 }

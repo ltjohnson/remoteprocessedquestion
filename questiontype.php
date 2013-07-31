@@ -62,6 +62,8 @@ class qtype_remoteprocessed extends question_type {
 
     public function save_question_options($question) {
       GLOBAL $DB;
+      
+      $context = $question->context;
 
       $this->save_hints($question);
       
@@ -93,6 +95,10 @@ class qtype_remoteprocessed extends question_type {
       // 2. Loop through the answers we have to save, update or add each 
       //    element as necessary.
       // 3. Any answers and answer supplemental data left over is deleted.
+      if (isset($question->answer) && !isset($question->answers)) {
+	$question->answers = $question->answer;
+      }
+
       $oldanswers = $DB->get_records('question_answers', 
 				     array('question' => $question->id),
 				     'id ASC');
@@ -103,47 +109,54 @@ class qtype_remoteprocessed extends question_type {
       if (!isset($question->answers)) {
 	$question->answers = array();
       }
+
       foreach ($question->answers as $key => $answerdata) {
+
+	if (is_array($answerdata)) {
+	  $answerdata = $answerdata['text'];
+	}
+
+	$answerdata = trim($answerdata);
+
+	if ($answerdata == '') {
+	  continue;
+	}
 
 	if (!empty($oldanswers)) {
 	  $answer = shift($oldanswers);
 	} else {
-	  $answer = $question->default_answer();
-	}
-
-	foreach ($answer as $akey => $tmp) {
-	  if (isset($answerdata->{$akey})) {
-	    $answer->{$akey} = $answerdata->{$akey};
-	  }
+	  $answer = qtype_remoteprocessed_question::default_answer();
+	  $answer->id = $DB->insert_record('question_answers', $answer);
 	}
 	
-	if (isset($answer->id)) {
-	  $DB->update_record("question_answers", $answer);
-	} else {
-	  $answer->id = $DB->insert_record("question_answers", $answer);
-	}
+	$answer->answer = $answerdata;
+	$answer->question = $question->id;
+	$answer->fraction = $question->fraction[$key];
+	$answer->feedback = 
+	  $this->import_or_save_files($question->feedback[$key],
+				      $context, 'question', 'answerfeedback', 
+				      $answer->id);
+	$answer->feedbackformat = $question->feedback[$key]['format'];
+
+	
+	$DB->update_record("question_answers", $answer);
 
 	// Save the extra answer data.
-	if (!empty($oldremoteanswers)) {
-	  $rp_answer = shift($oldremoteanswers);
-	} else {
-	  $rp_answer = $question->default_remoteprocessed_answer();
-	}
+	$rp_answer = array_shift($oldremoteanswers);
+	if (!$rp_answer) {
+	  $rp_answer = 
+	    qtype_remoteprocessed_question::default_remoteprocessed_answer();
+	} 
 	
 	$rp_answer->question = $question->id;
 	$rp_answer->answer   = $answer->id;
-	
-	foreach ($rp_answer as $rpkey => $tmp) {
-	  if (isset($answerdata->{$rpkey})) {
-	    $remoteprocessed_answer->{$rpkey} = $answerdata->{$rpkey};
-	  }
-	}
+	// FETCH TOLERANCE
 	
 	if (isset($rp_answer->id)) {
 	  $DB->update_record("question_rmtproc_answers", $rp_answer);
 	} else {
-	  $rp->id = $DB->insert_record("question_rmtproc_answers", 
-				       $rp_answer);
+	  $rp_answer->id = 
+	    $DB->insert_record("question_rmtproc_answers", $rp_answer);
 	}
 	
       }

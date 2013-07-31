@@ -144,7 +144,7 @@ class qtype_remoteprocessed_question extends question_graded_automatically_with_
     }
 
     // Some utility functions.
-    protected function default_answer() {
+    public static function default_answer() {
       $answer = (object) array("answer" => "", 
 			       "answerformat" => 1,
 			       "fraction" => 1.0,
@@ -153,9 +153,9 @@ class qtype_remoteprocessed_question extends question_graded_automatically_with_
       return $answer;
     }
     
-    protected function default_remoteprocessed_answer() {
-      $answerdata = (object) array("tolerance" => "0.0");
-      return $answerdata;
+    public static function default_remoteprocessed_answer() {
+      $answer = (object) array("tolerance" => "0.0");
+      return $answer;
     }
 
 }

@@ -23,6 +23,12 @@
 
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+$string['answerformula'] = 'Answer  {$a} formula';
+$string['answerdisplay'] = 'Answer display';
+$string['answerhdr'] = 'Answer';
+$string['answerstoleranceparam'] = 'Answers tolerance parameters';
+$string['answerwithtolerance'] = '{$a->answer} (±{$a->tolerance} {$a->tolerancetype})';
+
 $string['pluginname'] = 'remoteprocessed';
 $string['pluginname_help'] = 'Create a question type with components processed by remote servers.';
 $string['pluginname_link'] = 'question/type/remoteprocessed';
