@@ -28,6 +28,15 @@
 defined('MOODLE_INTERNAL') || die();
 
 
+function get_remote_processed_servers() {
+  GLOBAL $DB;
+  $menu = $DB->get_records_menu('question_rmtproc_servers',
+				null,
+				'id ASC',
+				'id,name');
+  return $menu;
+}
+
 /**
  * remoteprocessed question editing form definition.
  *
@@ -40,6 +49,12 @@ class qtype_remoteprocessed_edit_form extends question_edit_form {
     protected function data_preprocessing($question) {
         $question = parent::data_preprocessing($question);
         $question = $this->data_preprocessing_hints($question);
+	
+	foreach (qtype_remoteprocessed_question::$options_keys as $key) {
+	  if (isset($question->options->{$key})) {
+	    $question->{$key} = $question->options->{$key};
+	  }
+	}
 
         return $question;
     }
@@ -62,15 +77,19 @@ class qtype_remoteprocessed_edit_form extends question_edit_form {
       // Variables goes first, then imagecode, then questiontext, as this is 
       // the order the code will be evaluated in.
       $mform->insertElementBefore(
-        $mform->createElement('textarea', 'imagecode', '', 
+        $mform->createElement('textarea', 'imagecode', 'Image Code', 
 			      array('rows' => 5, 'cols' => 80)),
 	'questiontext');
       $mform->insertElementBefore(
-        $mform->createElement('textarea', 'variables', '',
+        $mform->createElement('textarea', 'variables', 'Variable Code',
 			      array('rows' =>15, 'cols' => 80)),
 	'imagecode');
       
       // TODO(leif): Add server selection dialog.
+      $mform->insertElementBefore(
+	$mform->createElement('select', 'serverid', 'Server', 
+                              get_remote_processed_servers()),
+	'variables');
 				  
     }
 }

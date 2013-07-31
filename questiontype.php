@@ -49,6 +49,16 @@ class qtype_remoteprocessed extends question_type {
         parent::delete_files($questionid, $contextid);
         $this->delete_files_in_hints($questionid, $contextid);
     }
+    
+    public function delete_question($questionid, $contextid) {
+      global $DB;
+      
+      $question_array = array('question' => $questionid);
+      $DB->delete_records('question_rmtproc', $question_array);
+      $DB->delete_records('question_rmtproc_answers', $question_array);
+
+      parent::delete_question($questionid, $contextid);
+    }
 
     public function save_question_options($question) {
       GLOBAL $DB;
@@ -60,13 +70,14 @@ class qtype_remoteprocessed extends question_type {
 				 array("question" => $question->id));
       if (!$options) {
 	$update = false;
-	$options = new stdClass();
+	$options = qtype_remoteprocessed_question::default_options();
 	$options->question = $question->id;
       }
       
-      foreach (array("serverid", "variables", "imagecode", "remotegrade") as 
-	       $key) {
-	$options->{$key} = $question->options->{$key};
+      foreach (qtype_remoteprocessed_question::$options_keys as $key) {
+	if (isset($question->{$key})) {
+	  $options->{$key} = $question->{$key};
+	}
       }
 
       if ($update) {
@@ -79,16 +90,19 @@ class qtype_remoteprocessed extends question_type {
       // tables.
       //
       // 1. Get the old answers and answer supplemental data.
-      // 2. Loop through the answers we have to save, update or add each element
-      //    as necessary.
+      // 2. Loop through the answers we have to save, update or add each 
+      //    element as necessary.
       // 3. Any answers and answer supplemental data left over is deleted.
-      $oldanswers = $DB->get_records("question_answer", 
-				     array("question" => $question->id),
-				     "id ASC");
-      $oldremoteanswers = $DB->get_records("question_rmtproc_answer",
-					   array("question" => $question->id),
-					   "answer ASC");
+      $oldanswers = $DB->get_records('question_answers', 
+				     array('question' => $question->id),
+				     'id ASC');
+      $oldremoteanswers = $DB->get_records('question_rmtproc_answers',
+					   array('question' => $question->id),
+					   'answer ASC');
       
+      if (!isset($question->answers)) {
+	$question->answers = array();
+      }
       foreach ($question->answers as $key => $answerdata) {
 
 	if (!empty($oldanswers)) {
@@ -156,12 +170,7 @@ class qtype_remoteprocessed extends question_type {
 					   array("question" => $question->id));
 
       if (!$question->options) {
-	// Default question options.
-	$question->options = (object) array("serverid" => 0,
-					    "variables" => "",
-					    "imagecode" => "",
-					    "remotegrade" => 0,
-					    "answers" => array());
+	$question->options = qtype_remoteprocessed_question::default_options();
       }
       
       if ($question->options->serverid != 0) {
@@ -172,18 +181,21 @@ class qtype_remoteprocessed extends question_type {
       
       $question->options->answers = $DB->get_records_sql("
         SELECT 
-          qa.*
+          qa.*,
           qra.tolerance
         FROM
-          question_answers qa, question_rmtproc_answer qra
+          {question_answers} qa, {question_rmtproc_answers} qra
         WHERE
           qa.question = ?
         AND
           qa.id = qra.answer", array("question" => $question->id));
       // Error if answers fail to load?
+      
+      return true;
     }
 
-    protected function initialise_question_instance(question_definition $question, $questiondata) {
+    protected function initialise_question_instance(
+      question_definition $question, $questiondata) {
         // TODO.
         parent::initialise_question_instance($question, $questiondata);
     }

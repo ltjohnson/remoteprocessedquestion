@@ -42,6 +42,18 @@ class qtype_remoteprocessed_question extends question_graded_automatically_with_
     }
   */
 
+  public static $options_keys =
+    array('serverid', 'variables', 'imagecode', 'remotegrade');
+
+  
+  public static function default_options() {
+    return (object) array('serverid' => 0,
+			  'variables' => '',
+			  'imagecode' => '',
+			  'remotegrade' => 0,
+			  'answers' => array());
+  }
+
     public function get_expected_data() {
         // TODO.
         return array();
@@ -102,7 +114,7 @@ class qtype_remoteprocessed_question extends question_graded_automatically_with_
     private function create_xml_rpc_request_args() {
       $server = $this->options->server;
       // Handle missing server.
-      $url = $server->serverurl;
+      $url = $server->url;
 
       // Create rpc request vars.
       $request = array();
