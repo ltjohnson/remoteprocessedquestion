@@ -26,7 +26,7 @@
 $string['answerformula'] = 'Answer  {$a} formula';
 $string['answerdisplay'] = 'Answer display';
 $string['answerhdr'] = 'Answer';
-$string['answerstoleranceparam'] = 'Answers tolerance parameters';
+$string['answertolerance'] = 'Tolerance';
 $string['answerwithtolerance'] = '{$a->answer} (±{$a->tolerance} {$a->tolerancetype})';
 
 $string['pluginname'] = 'remoteprocessed';

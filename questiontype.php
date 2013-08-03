@@ -203,6 +203,7 @@ class qtype_remoteprocessed extends question_type {
         AND
           qa.id = qra.answer", array("question" => $question->id));
       // Error if answers fail to load?
+      print_r($question->options->answers);
       
       return true;
     }

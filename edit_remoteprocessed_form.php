@@ -56,9 +56,54 @@ class qtype_remoteprocessed_edit_form extends question_edit_form {
 	    $question->{$key} = $question->options->{$key};
 	  }
 	}
+	
+	print "<br/>data_preprocessing<br/>";
+	print_r($question);
+	print "<br/>";
+	  
 
         return $question;
     }
+    
+    protected function data_preprocessing_answers($question, $withanswerfiles = false) {
+      $question = parent::data_preprocessing_answers($question, $withanswerfiles);
+      if (empty($question->options->answers)) {
+	return $question;
+      }
+      
+      $key = 0;
+      foreach ($question->options->answers as $answer) {
+	// See comment in the parent method about this hack.
+	unset($this->_form->_defaultValues["tolerance[$key]"]);
+
+	$question->tolerance[$key] = $answer->tolerance;
+	$key++;
+      }
+
+      return $question;
+
+    }
+
+    public function get_per_answer_fields($mform, $label, $gradeoptions, 
+					  &$repeatedoptions, &$answersoption) {
+      print "<br/>get_per_answer_fields</br>";
+      $repeated = parent::get_per_answer_fields($mform, $label, $gradeoptions, 
+						$repeatedoptions, $answersoption);
+      
+      $tolerance = $mform->createElement('text', 'tolerance', 
+	 get_string('answertolerance', 'qtype_remoteprocessed'),
+	 array('size' => 30));
+      $repeatedoptions['tolerance']['type'] = PARAM_TEXT;
+      $repeatedoptions['tolerance']['default'] = "0.0";
+      $elements = $repeated[0]->getElements();
+      $elements[0]->setSize(15);
+      array_splice($elements, 1, 0, array($tolerance));
+      $repeated[0]->setElements($elements);
+      
+      print "<br/>end get_per_answer_fields</br>";
+      return $repeated;
+    }
+
 
     public function qtype() {
         return 'remoteprocessed';
@@ -93,7 +138,6 @@ class qtype_remoteprocessed_edit_form extends question_edit_form {
 			
       $this->add_per_answer_fields(
         $mform, get_string('answerhdr', 'qtype_remoteprocessed', '{no}'),
-	question_bank::fraction_options_full(), 
-	1, 1);
+	question_bank::fraction_options_full());
     }
 }
