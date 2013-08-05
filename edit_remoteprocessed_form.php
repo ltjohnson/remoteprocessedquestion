@@ -62,8 +62,11 @@ class qtype_remoteprocessed_edit_form extends question_edit_form {
 	  'variables');
 
       $mform->addElement(
-        $mform->createElement('checkbox', 'remotegrade', 
-			      get_string('remotegrade', 'qtype_remoteprocessed')));
+        $mform->createElement('advcheckbox', 'remotegrade', 
+          get_string('remotegrade', 'qtype_remoteprocessed')));
+      $mform->addHelpButton('remotegrade', 'remotegrade', 'qtype_remoteprocessed');
+      $mform->setDefault('remotegrade', 0);
+
 
       $this->add_per_answer_fields($mform, 
         get_string('answerno', 'qtype_remoteprocessed', '{no}'),
