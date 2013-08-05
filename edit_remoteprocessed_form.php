@@ -27,15 +27,9 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+require_once($CFG->dirroot . '/question/type/edit_question_form.php');
+require_once($CFG->dirroot . '/question/type/remoteprocessed/questiontype.php');
 
-function get_remote_processed_servers() {
-  GLOBAL $DB;
-  $menu = $DB->get_records_menu('question_rmtproc_servers',
-				null,
-				'id ASC',
-				'id,name');
-  return $menu;
-}
 
 /**
  * remoteprocessed question editing form definition.
@@ -46,31 +40,77 @@ function get_remote_processed_servers() {
  */
 class qtype_remoteprocessed_edit_form extends question_edit_form {
 
-    protected function data_preprocessing($question) {
-        $question = parent::data_preprocessing($question);
-	$question = $this->data_preprocessing_answers($question, true);
-        $question = $this->data_preprocessing_hints($question);
-	
-	foreach (qtype_remoteprocessed_question::$options_keys as $key) {
-	  if (isset($question->options->{$key})) {
-	    $question->{$key} = $question->options->{$key};
-	  }
-	}
-	
-	print "<br/>data_preprocessing<br/>";
-	print_r($question);
-	print "<br/>";
-	  
+    protected function definition_inner($mform) {
+      // Add the variables and image code above the question text.  
+      // Variables goes first, then imagecode, then questiontext, as this is 
+      // the order the code will be evaluated in.
+      $mform->insertElementBefore(
+        $mform->createElement('textarea', 'imagecode', 
+			      get_string('imagecode', 'qtype_remoteprocessed'),
+			      array('rows' => 5, 'cols' => 80)),
+	'questiontext');
+      $mform->insertElementBefore(
+        $mform->createElement('textarea', 'variables', 
+			      get_string('variablecode', 'qtype_remoteprocessed'),
+			      array('rows' =>15, 'cols' => 80)),
+	'imagecode');
+      
+      $mform->insertElementBefore(
+        $mform->createElement('select', 'serverid', 
+            get_string('server', 'qtype_remoteprocessed'),
+            qtype_remoteprocessed::get_remote_processed_servers_menu()),
+	  'variables');
 
-        return $question;
+      $mform->addElement(
+        $mform->createElement('checkbox', 'remotegrade', 
+			      get_string('remotegrade', 'qtype_remoteprocessed')));
+
+      $this->add_per_answer_fields($mform, 
+        get_string('answerno', 'qtype_remoteprocessed', '{no}'),
+        question_bank::fraction_options());
+      
+
+      $this->add_interactive_settings();
     }
-    
+
+    protected function get_per_answer_fields($mform, $label, $gradeoptions,
+            &$repeatedoptions, &$answersoption) {
+        $repeated = parent::get_per_answer_fields($mform, $label, $gradeoptions,
+                $repeatedoptions, $answersoption);
+
+        $tolerance = $mform->createElement('text', 'tolerance',
+           get_string('answertolerance', 'qtype_remoteprocessed'), 
+	   array('size' => 30));
+        $repeatedoptions['tolerance']['type'] = PARAM_TEXT;
+        $repeatedoptions['tolerance']['default'] = "0.0";
+        $elements = $repeated[0]->getElements();
+        $elements[0]->setSize(30);
+        array_splice($elements, 1, 0, array($tolerance));
+        $repeated[0]->setElements($elements);
+
+        return $repeated;
+    }
+
+    protected function data_preprocessing($question) {
+      $question = parent::data_preprocessing($question);
+      $question = $this->data_preprocessing_answers($question);
+      $question = $this->data_preprocessing_hints($question);
+	
+      foreach (qtype_remoteprocessed_question::$options_keys as $key) {
+	if (isset($question->options->{$key})) {
+	  $question->{$key} = $question->options->{$key};
+	}
+      }
+
+      return $question;
+    }
+
     protected function data_preprocessing_answers($question, $withanswerfiles = false) {
       $question = parent::data_preprocessing_answers($question, $withanswerfiles);
       if (empty($question->options->answers)) {
 	return $question;
       }
-      
+
       $key = 0;
       foreach ($question->options->answers as $answer) {
 	// See comment in the parent method about this hack.
@@ -81,63 +121,9 @@ class qtype_remoteprocessed_edit_form extends question_edit_form {
       }
 
       return $question;
-
     }
-
-    public function get_per_answer_fields($mform, $label, $gradeoptions, 
-					  &$repeatedoptions, &$answersoption) {
-      print "<br/>get_per_answer_fields</br>";
-      $repeated = parent::get_per_answer_fields($mform, $label, $gradeoptions, 
-						$repeatedoptions, $answersoption);
-      
-      $tolerance = $mform->createElement('text', 'tolerance', 
-	 get_string('answertolerance', 'qtype_remoteprocessed'),
-	 array('size' => 30));
-      $repeatedoptions['tolerance']['type'] = PARAM_TEXT;
-      $repeatedoptions['tolerance']['default'] = "0.0";
-      $elements = $repeated[0]->getElements();
-      $elements[0]->setSize(15);
-      array_splice($elements, 1, 0, array($tolerance));
-      $repeated[0]->setElements($elements);
-      
-      print "<br/>end get_per_answer_fields</br>";
-      return $repeated;
-    }
-
 
     public function qtype() {
         return 'remoteprocessed';
-    }
-    
-    /**
-     * Add question-type specific form fields.
-     *
-     * @param MoodleQuickForm $mform, the form being built.
-     */
-    protected function definition_inner($mform) {
-      // adds the elements specific to this question type to the form used
-      // for editing question data.  This is what an instructor sees when 
-      // editing/creating questions of this type.
-      
-      // Add the variables and image code above the question text.  
-      // Variables goes first, then imagecode, then questiontext, as this is 
-      // the order the code will be evaluated in.
-      $mform->insertElementBefore(
-        $mform->createElement('textarea', 'imagecode', 'Image Code', 
-			      array('rows' => 5, 'cols' => 80)),
-	'questiontext');
-      $mform->insertElementBefore(
-        $mform->createElement('textarea', 'variables', 'Variable Code',
-			      array('rows' =>15, 'cols' => 80)),
-	'imagecode');
-      
-      $mform->insertElementBefore(
-	$mform->createElement('select', 'serverid', 'Server', 
-                              get_remote_processed_servers()),
-	'variables');
-			
-      $this->add_per_answer_fields(
-        $mform, get_string('answerhdr', 'qtype_remoteprocessed', '{no}'),
-	question_bank::fraction_options_full());
     }
 }

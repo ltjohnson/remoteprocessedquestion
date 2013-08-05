@@ -27,7 +27,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 require_once($CFG->libdir  . '/questionlib.php');
-require_once($CFG->dirroot . '/question/engine/lib.php');
+//require_once($CFG->dirroot . '/question/engine/lib.php');
 require_once($CFG->dirroot . '/question/type/remoteprocessed/question.php');
 
 
@@ -123,7 +123,7 @@ class qtype_remoteprocessed extends question_type {
 	}
 
 	if (!empty($oldanswers)) {
-	  $answer = shift($oldanswers);
+	  $answer = array_shift($oldanswers);
 	} else {
 	  $answer = qtype_remoteprocessed_question::default_answer();
 	  $answer->id = $DB->insert_record('question_answers', $answer);
@@ -148,9 +148,9 @@ class qtype_remoteprocessed extends question_type {
 	    qtype_remoteprocessed_question::default_remoteprocessed_answer();
 	} 
 	
-	$rp_answer->question = $question->id;
-	$rp_answer->answer   = $answer->id;
-	// FETCH TOLERANCE
+	$rp_answer->question  = $question->id;
+	$rp_answer->answer    = $answer->id;
+	$rp_answer->tolerance = trim($question->tolerance[$key]);
 	
 	if (isset($rp_answer->id)) {
 	  $DB->update_record("question_rmtproc_answers", $rp_answer);
@@ -203,7 +203,6 @@ class qtype_remoteprocessed extends question_type {
         AND
           qa.id = qra.answer", array("question" => $question->id));
       // Error if answers fail to load?
-      print_r($question->options->answers);
       
       return true;
     }
@@ -223,5 +222,16 @@ class qtype_remoteprocessed extends question_type {
         // TODO.
         return array();
     }
-    
+
+    /* 
+     * Get a menu of available remote processing servers.
+     */
+    public static function get_remote_processed_servers_menu() {
+      GLOBAL $DB;
+      $menu = $DB->get_records_menu('question_rmtproc_servers',
+				    null,
+				    'id ASC',
+				    'id,name');
+      return $menu;
+    }
 }
