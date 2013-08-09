@@ -23,24 +23,30 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-
 defined('MOODLE_INTERNAL') || die();
-
+require_once(dirname(__FILE__) . '/locallib.php');
 
 /**
  * Represents a remoteprocessed question.
  *
  * @copyright  2013 Leif Johnson (leif.t.johnson@gmail.com)
-
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class qtype_remoteprocessed_question extends question_graded_automatically_with_countback {
 
-  /* Disable, this is incomplete and causes errors.
-    public start_attempt(question_attempt_step $step, $variant) {
-        
-    }
-  */
+  public function start_attempt(question_attempt_step $step, $variant) {
+    print "<br/><b>start_attempt</b><br/>";
+    print_r($this);
+    print "<br/><b>step</b><br/>";
+    print_r($step);
+    $request = $this->question_initialization_xmlrpc_request_args();
+    $xmlResponse = xmlrpc_request($request_args);
+    $step->set_qt_var('_questiontext', $xmlResponse->questiontext);
+  }
+
+  public function apply_attempt_state(question_attempt_step $step) {
+    $this->questiontext = $step->get_qt_var('_questiontext');
+  }
 
   public static $options_keys =
     array('serverid', 'variables', 'imagecode', 'remotegrade');
@@ -111,7 +117,9 @@ class qtype_remoteprocessed_question extends question_graded_automatically_with_
     }
 
     // Functions for communicating with the remote server.
-    private function create_xml_rpc_request_args() {
+    private function question_initialization_xmlrpc_request_args() {
+      print "<br/><b>question_initialization_xmlrpc_request_args</b><br/>";
+      print_r($this);
       $server = $this->options->server;
       // Handle missing server.
       $url = $server->url;
@@ -122,14 +130,14 @@ class qtype_remoteprocessed_question extends question_graded_automatically_with_
 
       $imagecode = trim($this->options->imagecode);
       if ($imagecode) {
-	$request['imagecode'] = $imagecode;
+	       $request['imagecode'] = $imagecode;
       }
       $request['questiontext'] = $this->questiontext;
       $request['remotegrade'] = $this->options->remotegrade;
       $request['answers'] = array();
       
       foreach ($this->options->answers as $answer) {
-	array_push($request['answers'],
+	     array_push($request['answers'],
 		   array('ansid'     => $answer->id, 
 			 'answer'    => $answer->answer,
 			 'tolerance' => $answer->tolerance));
@@ -137,10 +145,9 @@ class qtype_remoteprocessed_question extends question_graded_automatically_with_
       
       $request['numanswers'] = count($request['answers']);
 
-      
       return array('url' => $url, 
-		   'method' => 'processquestion', 
-		   'request' => $request);
+		               'method' => 'processquestion', 
+		               'request' => $request);
     }
 
     // Some utility functions.

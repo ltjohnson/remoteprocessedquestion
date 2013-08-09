@@ -35,20 +35,19 @@ require_once($CFG->dirroot . '/question/type/remoteprocessed/question.php');
  * The remoteprocessed question type.
  *
  * @copyright  2013 Leif Johnson (leif.t.johnson@gmail.com)
-
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class qtype_remoteprocessed extends question_type {
 
-    public function move_files($questionid, $oldcontextid, $newcontextid) {
-        parent::move_files($questionid, $oldcontextid, $newcontextid);
-        $this->move_files_in_hints($questionid, $oldcontextid, $newcontextid);
-    }
+  public function move_files($questionid, $oldcontextid, $newcontextid) {
+    parent::move_files($questionid, $oldcontextid, $newcontextid);
+    $this->move_files_in_hints($questionid, $oldcontextid, $newcontextid);
+  }
 
-    protected function delete_files($questionid, $contextid) {
-        parent::delete_files($questionid, $contextid);
-        $this->delete_files_in_hints($questionid, $contextid);
-    }
+  protected function delete_files($questionid, $contextid) {
+    parent::delete_files($questionid, $contextid);
+    $this->delete_files_in_hints($questionid, $contextid);
+  }
     
     public function delete_question($questionid, $contextid) {
       global $DB;
@@ -71,21 +70,21 @@ class qtype_remoteprocessed extends question_type {
       $options = $DB->get_record("question_rmtproc", 
 				 array("question" => $question->id));
       if (!$options) {
-	$update = false;
-	$options = qtype_remoteprocessed_question::default_options();
-	$options->question = $question->id;
+	       $update = false;
+	       $options = qtype_remoteprocessed_question::default_options();
+	       $options->question = $question->id;
       }
       
       foreach (qtype_remoteprocessed_question::$options_keys as $key) {
-	if (isset($question->{$key})) {
-	  $options->{$key} = $question->{$key};
-	}
+	     if (isset($question->{$key})) {
+	       $options->{$key} = $question->{$key};
+	     }
       }
 
       if ($update) {
-	$DB->update_record('question_rmtproc', $options);
+	       $DB->update_record('question_rmtproc', $options);
       } else {
-	$DB->insert_record('question_rmtproc', $options);
+	       $DB->insert_record('question_rmtproc', $options);
       }
       
       // Now save the question answers.  Answer data is mixed between two 
@@ -96,7 +95,7 @@ class qtype_remoteprocessed extends question_type {
       //    element as necessary.
       // 3. Any answers and answer supplemental data left over is deleted.
       if (isset($question->answer) && !isset($question->answers)) {
-	$question->answers = $question->answer;
+	       $question->answers = $question->answer;
       }
 
       $oldanswers = $DB->get_records('question_answers', 
@@ -107,74 +106,72 @@ class qtype_remoteprocessed extends question_type {
 					   'answer ASC');
       
       if (!isset($question->answers)) {
-	$question->answers = array();
+	       $question->answers = array();
       }
 
       foreach ($question->answers as $key => $answerdata) {
+	       if (is_array($answerdata)) {
+	         $answerdata = $answerdata['text'];
+	       }
 
-	if (is_array($answerdata)) {
-	  $answerdata = $answerdata['text'];
-	}
+	     $answerdata = trim($answerdata);
 
-	$answerdata = trim($answerdata);
+	     if ($answerdata == '') {
+	       continue;
+	     }
 
-	if ($answerdata == '') {
-	  continue;
-	}
-
-	if (!empty($oldanswers)) {
-	  $answer = array_shift($oldanswers);
-	} else {
-	  $answer = qtype_remoteprocessed_question::default_answer();
-	  $answer->id = $DB->insert_record('question_answers', $answer);
-	}
+	     if (!empty($oldanswers)) {
+	       $answer = array_shift($oldanswers);
+	     } else {
+	       $answer = qtype_remoteprocessed_question::default_answer();
+	       $answer->id = $DB->insert_record('question_answers', $answer);
+	     }
 	
-	$answer->answer = $answerdata;
-	$answer->question = $question->id;
-	$answer->fraction = $question->fraction[$key];
-	$answer->feedback = 
-	  $this->import_or_save_files($question->feedback[$key],
+	     $answer->answer = $answerdata;
+	     $answer->question = $question->id;
+	     $answer->fraction = $question->fraction[$key];
+	     $answer->feedback = 
+	       $this->import_or_save_files($question->feedback[$key],
 				      $context, 'question', 'answerfeedback', 
 				      $answer->id);
-	$answer->feedbackformat = $question->feedback[$key]['format'];
+	     $answer->feedbackformat = $question->feedback[$key]['format'];
+	
+	     $DB->update_record("question_answers", $answer);
 
+	     // Save the extra answer data.
+	     $rp_answer = array_shift($oldremoteanswers);
+	     if (!$rp_answer) {
+	       $rp_answer = 
+	         qtype_remoteprocessed_question::default_remoteprocessed_answer();
+	     } 
 	
-	$DB->update_record("question_answers", $answer);
-
-	// Save the extra answer data.
-	$rp_answer = array_shift($oldremoteanswers);
-	if (!$rp_answer) {
-	  $rp_answer = 
-	    qtype_remoteprocessed_question::default_remoteprocessed_answer();
-	} 
+	     $rp_answer->question  = $question->id;
+	     $rp_answer->answer    = $answer->id;
+	     $rp_answer->tolerance = trim($question->tolerance[$key]);
 	
-	$rp_answer->question  = $question->id;
-	$rp_answer->answer    = $answer->id;
-	$rp_answer->tolerance = trim($question->tolerance[$key]);
-	
-	if (isset($rp_answer->id)) {
-	  $DB->update_record("question_rmtproc_answers", $rp_answer);
-	} else {
-	  $rp_answer->id = 
-	    $DB->insert_record("question_rmtproc_answers", $rp_answer);
-	}
+	     if (isset($rp_answer->id)) {
+	       $DB->update_record("question_rmtproc_answers", $rp_answer);
+	     } else {
+	       $rp_answer->id = 
+	       $DB->insert_record("question_rmtproc_answers", $rp_answer);
+	     }
 	
       }
       
       // Delete left over records.
-      if (!empty($oldanswers)) {
-	foreach ($oldanswers as $oa) {
-	  $DB->delete_records("question_answer", array("id" => $oa->id));
-	}
-      }
-      
-      if (!empty($oldremoteanswers)) {
-	foreach ($oldremoteanswers as $ora) {
-	  $DB->delte_records("question_rmtproc_answers",  
-			     array("id" => $ora->id));
-	}
-      }
+    if (!empty($oldanswers)) {
+	   foreach ($oldanswers as $oa) {
+	     $DB->delete_records("question_answer", array("id" => $oa->id));
+	   }
     }
+      
+   if (!empty($oldremoteanswers)) {
+	   foreach ($oldremoteanswers as $ora) {
+	    $DB->delte_records("question_rmtproc_answers",  
+			     array("id" => $ora->id));
+	   }
+    }
+  }
     
     public function get_question_options($question) {
       GLOBAL $DB;
@@ -183,12 +180,12 @@ class qtype_remoteprocessed extends question_type {
 					   array("question" => $question->id));
 
       if (!$question->options) {
-	$question->options = qtype_remoteprocessed_question::default_options();
+	     $question->options = qtype_remoteprocessed_question::default_options();
       }
       
       if ($question->options->serverid != 0) {
-	$question->options->server =
-	  $DB->get_record("question_rmtproc_servers",
+	       $question->options->server =
+	       $DB->get_record("question_rmtproc_servers",
 			  array("id" => $question->options->serverid));
       }
       
@@ -202,15 +199,17 @@ class qtype_remoteprocessed extends question_type {
           qa.question = ?
         AND
           qa.id = qra.answer", array("question" => $question->id));
-      // Error if answers fail to load?
+      if (!$question->options->answer) {
+	return False;
+      }
       
       return true;
     }
 
     protected function initialise_question_instance(
       question_definition $question, $questiondata) {
-        // TODO.
-        parent::initialise_question_instance($question, $questiondata);
+      parent::initialise_question_instance($question, $questiondata);
+      $question->options = $questiondata->options;
     }
 
     public function get_random_guess_score($questiondata) {
