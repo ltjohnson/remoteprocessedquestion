@@ -40,8 +40,18 @@ class qtype_remoteprocessed_question extends question_graded_automatically_with_
     print "<br/><b>step</b><br/>";
     print_r($step);
     $request = $this->question_initialization_xmlrpc_request_args();
-    $xmlResponse = xmlrpc_request($request_args);
-    $step->set_qt_var('_questiontext', $xmlResponse->questiontext);
+    print "<br><b>xmlrpc request</b><br/>";
+    print_r($request);
+    $xmlResponse = xmlrpc_request($request);
+    if (!$xmlResponse->success) {
+      print "<br/><b>Error processing question.</b><br/>";
+      print $xmlResponse->warning;
+      return;
+    }
+    print "<br><b>response</b></br>";
+    print_r($xmlResponse->data);
+    $this->questiontext = $xmlResponse->data->questiontext;
+    $step->set_qt_var('_questiontext', $this->questiontext);
   }
 
   public function apply_attempt_state(question_attempt_step $step) {
@@ -119,10 +129,6 @@ class qtype_remoteprocessed_question extends question_graded_automatically_with_
     // Functions for communicating with the remote server.
     private function question_initialization_xmlrpc_request_args() {
       print "<br/><b>question_initialization_xmlrpc_request_args</b><br/>";
-      print_r($this);
-      $server = $this->options->server;
-      // Handle missing server.
-      $url = $server->url;
 
       // Create rpc request vars.
       $request = array();
@@ -145,9 +151,9 @@ class qtype_remoteprocessed_question extends question_graded_automatically_with_
       
       $request['numanswers'] = count($request['answers']);
 
-      return array('url' => $url, 
-		               'method' => 'processquestion', 
-		               'request' => $request);
+      return (object) array('server' => $this->options->server->url, 
+		                        'method' => 'processquestion', 
+		                        'args'   => $request);
     }
 
     // Some utility functions.

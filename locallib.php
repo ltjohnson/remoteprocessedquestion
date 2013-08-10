@@ -30,7 +30,6 @@ defined('MOODLE_INTERNAL') || die();
  * Helper functions for remote processed questions.
  *
  * @copyright  2013 Leif Johnson (leif.t.johnson@gmail.com)
-
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -82,19 +81,24 @@ function do_rpc_call($url, $request) {
  *    * 'data' a php version of the response if the request was successful.
  */
 function xmlrpc_request($request_args) {
-  $request  = xmlrpc_encode_request($request_args->method, $$equest_args->args);
+  $request  = xmlrpc_encode_request($request_args->method, $request_args->args);
   $response = do_rpc_call($request_args->server, $request);
-  if ($response->success) {
-    $response->data  = xmlrpc_decode($response->data);
+  $response->data = xmlrpc_decode($response->data);
+  $response->success = $response->success &&
+    !array_key_exists('faultCode', $response->data);
+  if (!$response->success) {
     // Not quite done looking for errors yet, we need to see if 
     // a faultcode was sent back
     if (array_key_exists('faultCode', $response->data)) {
-      $response->success = false;
       $response->warning = "Error processing question: </br>".
 	       "faultCode[". $response->data['faultCode'] . "] </br>".
 	       "faultString[". $response->data['faultString'] . "] </br>";
-      $response->data = NULL;
+    } else {
+      $response->warning = "Unknown error processing question.</br>";
     }
+    $response->data = NULL;
+  } else {
+    $response->data = (object) $response->data;
   }
   return $response;
 }
