@@ -199,8 +199,8 @@ class qtype_remoteprocessed extends question_type {
           qa.question = ?
         AND
           qa.id = qra.answer", array("question" => $question->id));
-      if (!$question->options->answer) {
-	return False;
+      if (!$question->options->answers) {
+        return false;
       }
       
       return true;

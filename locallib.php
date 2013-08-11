@@ -102,3 +102,10 @@ function xmlrpc_request($request_args) {
   }
   return $response;
 }
+
+/* Functions for working with base64 images. */
+function base64_png_img_tag($base64_png) {
+  $tag = "<img style='display:block;' id='base64image' " .                
+    "src='data:image/png;base64, " . $base64_png . "' />";
+  return $tag;
+}

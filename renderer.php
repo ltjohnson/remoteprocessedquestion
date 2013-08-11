@@ -20,7 +20,6 @@
  * @package    qtype
  * @subpackage remoteprocessed
  * @copyright  2013 Leif Johnson (leif.t.johnson@gmail.com)
-
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -32,28 +31,47 @@ defined('MOODLE_INTERNAL') || die();
  * Generates the output for remoteprocessed questions.
  *
  * @copyright  2013 Leif Johnson (leif.t.johnson@gmail.com)
-
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class qtype_remoteprocessed_renderer extends qtype_renderer {
     public function formulation_and_controls(question_attempt $qa,
             question_display_options $options) {
 
+        print "<br/><b>formulation_and_controls</b><br/>";
         $question = $qa->get_question();
 
         $questiontext = $question->format_questiontext($qa);
-        $placeholder = false;
-        if (preg_match('/_____+/', $questiontext, $matches)) {
-            $placeholder = $matches[0];
-        }
-        $input = '**subq controls go in here**';
 
-        if ($placeholder) {
-            $questiontext = substr_replace($questiontext, $input,
-                    strpos($questiontext, $placeholder), strlen($placeholder));
+        if ($question->image != "") {
+            $questiontext = base64_png_img_tag($question->image) . "<br />" . 
+                $questiontext;
         }
+
+        // Answer field.
+        $answer = $qa->get_last_qt_var('answer');
+        $inputname = $qa->get_qt_field_name('answer');
+        print "inputname: $inputname<br/>";
+        $inputattributes = array(
+            'type' => 'text',
+            'name' => $inputname,
+            'value' => $answer,
+            'id' => $inputname,
+            'size' => 80,
+        );
+
+        if ($answer) {
+            $inputattributes['value'] = $answer;
+        }
+
+        if ($options->readonly){
+            $inputattributes['readonly'] = 'readonly';
+        }
+
+        // TODO: feedback images.
+        $input = html_writer::empty_tag('input', $inputattributes);
 
         $result = html_writer::tag('div', $questiontext, array('class' => 'qtext'));
+        $result .= html_writer::tag('div', $input, array('class' => 'answer'));
 
         /* if ($qa->get_state() == question_state::$invalid) {
             $result .= html_writer::nonempty_tag('div',

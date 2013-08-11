@@ -35,32 +35,29 @@ require_once(dirname(__FILE__) . '/locallib.php');
 class qtype_remoteprocessed_question extends question_graded_automatically_with_countback {
 
   public function start_attempt(question_attempt_step $step, $variant) {
-    print "<br/><b>start_attempt</b><br/>";
-    print_r($this);
-    print "<br/><b>step</b><br/>";
-    print_r($step);
     $request = $this->question_initialization_xmlrpc_request_args();
-    print "<br><b>xmlrpc request</b><br/>";
-    print_r($request);
     $xmlResponse = xmlrpc_request($request);
     if (!$xmlResponse->success) {
       print "<br/><b>Error processing question.</b><br/>";
       print $xmlResponse->warning;
       return;
     }
-    print "<br><b>response</b></br>";
-    print_r($xmlResponse->data);
     $this->questiontext = $xmlResponse->data->questiontext;
+    $this->image = "";
+    if (isset($xmlResponse->data->image)) {
+      $this->image = $xmlResponse->data->image;
+    } 
+    $step->set_qt_var('_image', $this->image);
     $step->set_qt_var('_questiontext', $this->questiontext);
   }
 
   public function apply_attempt_state(question_attempt_step $step) {
     $this->questiontext = $step->get_qt_var('_questiontext');
+    $this->image = $step->get_qt_var('_image');
   }
 
   public static $options_keys =
     array('serverid', 'variables', 'imagecode', 'remotegrade');
-
   
   public static function default_options() {
     return (object) array('serverid' => 0,
@@ -71,18 +68,18 @@ class qtype_remoteprocessed_question extends question_graded_automatically_with_
   }
 
     public function get_expected_data() {
-        // TODO.
-        return array();
+        return array('answer' => PARAM_RAW_TRIMMED);
     }
 
     public function summarise_response(array $response) {
-        // TODO.
-        return null;
+        if (!array_key_exists('answer', $response)) {
+          return null;
+        }
+        return $response['answer'];
     }
 
     public function is_complete_response(array $response) {
-        // TODO.
-        return true;
+        return array_key_exists('answer', $response);
     }
 
     public function get_validation_error(array $response) {
@@ -128,8 +125,6 @@ class qtype_remoteprocessed_question extends question_graded_automatically_with_
 
     // Functions for communicating with the remote server.
     private function question_initialization_xmlrpc_request_args() {
-      print "<br/><b>question_initialization_xmlrpc_request_args</b><br/>";
-
       // Create rpc request vars.
       $request = array();
       $request['variables'] = $this->options->variables;
