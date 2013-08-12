@@ -32,7 +32,7 @@ require_once(dirname(__FILE__) . '/locallib.php');
  * @copyright  2013 Leif Johnson (leif.t.johnson@gmail.com)
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class qtype_remoteprocessed_question extends question_graded_automatically_with_countback {
+class qtype_remoteprocessed_question extends question_graded_automatically {
 
   public function start_attempt(question_attempt_step $step, $variant) {
     $request = $this->question_initialization_xmlrpc_request_args();
@@ -111,141 +111,165 @@ class qtype_remoteprocessed_question extends question_graded_automatically_with_
 			  'answers' => array());
   }
 
-    public function get_expected_data() {
-        return array('answer' => PARAM_RAW_TRIMMED);
+  public function get_expected_data() {
+    return array('answer' => PARAM_RAW_TRIMMED);
+  }
+
+  public function summarise_response(array $response) {
+    if (!array_key_exists('answer', $response)) {
+      return null;
+    }
+    return $response['answer'];
+  }
+
+  public function is_complete_response(array $response) {
+    return array_key_exists('answer', $response);
+  }
+
+  public function get_validation_error(array $response) {
+    // TODO.
+    return '';
+  }
+
+  public function is_same_response(array $prevresponse, array $newresponse) {
+    return trim($prevresponse['answer']) === trim($newresponse['answer']);
+  }
+
+
+  public function get_correct_response() {
+    // TODO.
+    return array();
+  }
+
+
+  public function check_file_access($qa, $options, $component, $filearea,
+                                    $args, $forcedownload) {
+    // TODO.
+    if ($component == 'question' && $filearea == 'hint') {
+      return $this->check_hint_file_access($qa, $options, $args);
+    } else {
+      return parent::check_file_access($qa, $options, $component, $filearea,
+                                       $args, $forcedownload);
+    }
+  }
+
+  public function get_matching_answer_id(array $response) {
+    $value = $response['answer'];
+
+    if (is_null($value) || $value == '') {
+      return 0;
     }
 
-    public function summarise_response(array $response) {
-        if (!array_key_exists('answer', $response)) {
-          return null;
-        }
-        return $response['answer'];
+    $remotegrade = isset($this->options->remotegrade) && 
+      $this->options->remotegrade == 1;
+
+    if ($remotegrade) {
+      $ansid = $this->find_matching_answerid_remotely($value);
+    } else {
+      $ansid = $this->find_matching_answerid_locally($value);
     }
 
-    public function is_complete_response(array $response) {
-        return array_key_exists('answer', $response);
+    return $ansid;
+  }
+
+  public function grade_response(array $response) {
+    $ansid = $this->get_matching_answer_id($response);
+
+    if ($ansid == 0) {
+      return array(0, question_state::graded_state_for_fraction(0));
     }
 
-    public function get_validation_error(array $response) {
-        // TODO.
-        return '';
-    }
-
-    public function is_same_response(array $prevresponse, array $newresponse) {
-        // TODO.
-        return question_utils::arrays_same_at_key_missing_is_blank(
-                $prevresponse, $newresponse, 'answer');
-    }
-
-
-    public function get_correct_response() {
-        // TODO.
-        return array();
-    }
-
-
-    public function check_file_access($qa, $options, $component, $filearea,
-            $args, $forcedownload) {
-        // TODO.
-        if ($component == 'question' && $filearea == 'hint') {
-            return $this->check_hint_file_access($qa, $options, $args);
-
-        } else {
-            return parent::check_file_access($qa, $options, $component, $filearea,
-                    $args, $forcedownload);
-        }
-    }
-
-    public function grade_response_locally(array $response) {
-      $value = $response['answer'];
-      if (is_null($value) || $value == '') {
-        return array(0, question_state::graded_state_for_fraction(0));
+    foreach ($this->options->answers as $answer) {
+      if ($answer->id == $ansid) {
+        $fraction = $answer->fraction;
+        break;
       }
-      $ansid = 0;
-      foreach ($this->calculatedanswers as $answer) {
-        // Find the first answer that matches the response.
-        $difference = $answer['answer'] - $value;
-        if (abs($difference) <= $answer['tolerance']) {
-          $ansid = $answer['ansid'];
-          break;
-        }
-      }
-
-      $fraction = 0;
-
-      if ($ansid > 0) {
-        foreach ($this->options->answers as $answer) {
-          if ($answer->id == $ansid) {
-            $fraction = $answer->fraction;
-            break;
-          }
-        }
-      }
+    }
       
-      return array($fraction, question_state::graded_state_for_fraction($fraction));
-    }
-
-    public function grade_response_remotely(array $response) {
-      // TODO
-      $fraction = 0;
-      return array($fraction, question_state::graded_state_for_fraction($fraction));
-    }
-
-    public function grade_response(array $response) {
-      if (isset($this->options->remotegrade) &&
-          $this->options->remotegrade === 1) {
-        return $this->grade_response_remotely($response);
-      } else {
-        return $this->grade_response_locally($response);
-      }
-    }
-
-    public function compute_final_grade($responses, $totaltries) {
-        // TODO.
-        return 0;
-    }
-
-    // Functions for communicating with the remote server.
-    private function question_initialization_xmlrpc_request_args() {
-      // Create rpc request vars.
-      $request = array();
-      $request['variables'] = $this->options->variables;
-
-      $imagecode = trim($this->options->imagecode);
-      if ($imagecode) {
-	       $request['imagecode'] = $imagecode;
-      }
-      $request['questiontext'] = $this->questiontext;
-      $request['remotegrade'] = $this->options->remotegrade;
-      $request['answers'] = array();
-      
-      foreach ($this->options->answers as $answer) {
-	     array_push($request['answers'],
-		   array('ansid'     => $answer->id, 
-			 'answer'    => $answer->answer,
-			 'tolerance' => $answer->tolerance));
-      }
-      
-      $request['numanswers'] = count($request['answers']);
-
-      return (object) array('server' => $this->options->server->url, 
-		                        'method' => 'processquestion', 
-		                        'args'   => $request);
-    }
-
-    // Some utility functions.
-    public static function default_answer() {
-      $answer = (object) array("answer" => "", 
-			       "answerformat" => 1,
-			       "fraction" => 1.0,
-			       "feedback" => "",
-			       "feedbackformat" => 0);
-      return $answer;
-    }
+    return array(
+      $fraction, 
+      question_state::graded_state_for_fraction($fraction)
+      );
+  }
     
-    public static function default_remoteprocessed_answer() {
-      $answer = (object) array("tolerance" => "0.0");
-      return $answer;
+  public function find_matching_answerid_locally($value) {
+    foreach ($this->calculatedanswers as $answer) {
+      // Find the first answer that matches the response.
+      $difference = $answer['answer'] - $value;
+      if (abs($difference) <= $answer['tolerance']) {
+        return $answer['ansid'];
+      }
+    }
+    return 0;
+  }
+
+  public function find_matching_answerid_remotely($value) {
+    // TODO
+    return 0;
+  }
+
+  public function get_matching_answer(array $response) {
+    $ansid = $this->get_matching_answer_id($response);
+
+    if ($ansid == 0) {
+      return null;
     }
 
+    foreach ($this->options->answers as $answer) {
+      if ($answer->id == $ansid) {
+        return $answer;
+      }
+    }
+
+    return null;
+  }
+
+  public function compute_final_grade($responses, $totaltries) {
+    // TODO.
+    return 0;
+  }
+
+  // Functions for communicating with the remote server.
+  private function question_initialization_xmlrpc_request_args() {
+    // Create rpc request vars.
+    $request = array();
+    $request['variables'] = $this->options->variables;
+
+    $imagecode = trim($this->options->imagecode);
+    if ($imagecode) {
+      $request['imagecode'] = $imagecode;
+    }
+    $request['questiontext'] = $this->questiontext;
+    $request['remotegrade'] = $this->options->remotegrade;
+    $request['answers'] = array();
+      
+    foreach ($this->options->answers as $answer) {
+	     array_push($request['answers'],
+		   array(
+        'ansid'     => $answer->id,
+        'answer'    => $answer->answer,
+        'tolerance' => $answer->tolerance));
+    }
+      
+    $request['numanswers'] = count($request['answers']);
+
+    return (object) array('server' => $this->options->server->url,
+                          'method' => 'processquestion', 
+		                      'args'   => $request);
+  }
+
+  // Some utility functions.
+  public static function default_answer() {
+    $answer = (object) array("answer" => "", 
+			                       "answerformat" => 1,
+			                       "fraction" => 1.0,
+			                       "feedback" => "",
+		                	       "feedbackformat" => 0);
+    return $answer;
+  }
+    
+  public static function default_remoteprocessed_answer() {
+    $answer = (object) array("tolerance" => "0.0");
+    return $answer;
+  }
 }
