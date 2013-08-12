@@ -40,13 +40,38 @@ class qtype_remoteprocessed_question extends question_graded_automatically_with_
     if (!$xmlResponse->success) {
       print "<br/><b>Error processing question.</b><br/>";
       print $xmlResponse->warning;
-      return;
     }
     $this->questiontext = $xmlResponse->data->questiontext;
     $this->image = "";
     if (isset($xmlResponse->data->image)) {
       $this->image = $xmlResponse->data->image;
     } 
+
+    if (!$this->options->remotegrade) {
+      // Grading is to be done by the Moodle server, extract and store 
+      // the grading information from the xmlResponse.
+      $this->calculatedanswers = $xmlResponse->data->answers;
+      $ansid_arr     = array();
+      $answer_arr    = array();
+      $tolerance_arr = array();
+      foreach ($this->calculatedanswers as $answer) {
+        $answer_arr[] = $answer['answer'];
+        $ansid_arr[]  = $answer['ansid'];
+        // There has to be an answer and ansid at each point, however, 
+        // tolerance may be empty.
+        if (isset($answer['tolerance'])) {
+          $tolerance_arr[] = $answer['tolerance'];
+        } else {
+          // push an empty string if the tolerance is missing from this answer.
+          $tolerance_arr[] = "";
+        }
+        
+      }
+      $step->set_qt_var('_answer', implode("@", $answer_arr));
+      $step->set_qt_var('_ansid', implode("@", $ansid_arr));
+      $step->set_qt_var('_tolerance', implode("@", $tolerance_arr));
+    }
+
     $step->set_qt_var('_image', $this->image);
     $step->set_qt_var('_questiontext', $this->questiontext);
   }
@@ -54,6 +79,25 @@ class qtype_remoteprocessed_question extends question_graded_automatically_with_
   public function apply_attempt_state(question_attempt_step $step) {
     $this->questiontext = $step->get_qt_var('_questiontext');
     $this->image = $step->get_qt_var('_image');
+
+    if (!$this->options->remotegrade) {
+      $answer_arr    = explode("@", $step->get_qt_var('_answer'));
+      $ansid_arr     = explode("@", $step->get_qt_var('_ansid'));
+      $tolerance_arr = explode("@", $step->get_qt_var('_tolerance'));
+
+      $numanswers = count($answer_arr);
+      $answers = array();
+      for ($i = 0; $i < $numanswers; $i++) {
+        $answer = array(
+          'answer' => $answer_arr[$i],
+          'tolerance' => $tolerance_arr[$i],
+          'ansid' => $ansid_arr[$i],
+          );
+        array_push($answers, $answer);
+      }
+
+      $this->calculatedanswers = $answers;
+    }
   }
 
   public static $options_keys =
@@ -112,10 +156,48 @@ class qtype_remoteprocessed_question extends question_graded_automatically_with_
         }
     }
 
+    public function grade_response_locally(array $response) {
+      $value = $response['answer'];
+      if (is_null($value) || $value == '') {
+        return array(0, question_state::graded_state_for_fraction(0));
+      }
+      $ansid = 0;
+      foreach ($this->calculatedanswers as $answer) {
+        // Find the first answer that matches the response.
+        $difference = $answer['answer'] - $value;
+        if (abs($difference) <= $answer['tolerance']) {
+          $ansid = $answer['ansid'];
+          break;
+        }
+      }
+
+      $fraction = 0;
+
+      if ($ansid > 0) {
+        foreach ($this->options->answers as $answer) {
+          if ($answer->id == $ansid) {
+            $fraction = $answer->fraction;
+            break;
+          }
+        }
+      }
+      
+      return array($fraction, question_state::graded_state_for_fraction($fraction));
+    }
+
+    public function grade_response_remotely(array $response) {
+      // TODO
+      $fraction = 0;
+      return array($fraction, question_state::graded_state_for_fraction($fraction));
+    }
+
     public function grade_response(array $response) {
-        // TODO.
-        $fraction = 0;
-        return array($fraction, question_state::graded_state_for_fraction($fraction));
+      if (isset($this->options->remotegrade) &&
+          $this->options->remotegrade === 1) {
+        return $this->grade_response_remotely($response);
+      } else {
+        return $this->grade_response_locally($response);
+      }
     }
 
     public function compute_final_grade($responses, $totaltries) {

@@ -37,7 +37,6 @@ class qtype_remoteprocessed_renderer extends qtype_renderer {
     public function formulation_and_controls(question_attempt $qa,
             question_display_options $options) {
 
-        print "<br/><b>formulation_and_controls</b><br/>";
         $question = $qa->get_question();
 
         $questiontext = $question->format_questiontext($qa);
@@ -50,7 +49,6 @@ class qtype_remoteprocessed_renderer extends qtype_renderer {
         // Answer field.
         $answer = $qa->get_last_qt_var('answer');
         $inputname = $qa->get_qt_field_name('answer');
-        print "inputname: $inputname<br/>";
         $inputattributes = array(
             'type' => 'text',
             'name' => $inputname,
