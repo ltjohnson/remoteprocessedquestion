@@ -98,7 +98,7 @@ function xmlrpc_request($request_args) {
     }
     $response->data = NULL;
   } else {
-    $response->data = (object) $response->data;
+    $response->data = $response->data;
   }
   return $response;
 }

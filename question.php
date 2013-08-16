@@ -41,16 +41,17 @@ class qtype_remoteprocessed_question extends question_graded_automatically {
       print "<br/><b>Error processing question.</b><br/>";
       print $xmlResponse->warning;
     }
-    $this->questiontext = $xmlResponse->data->questiontext;
+    $data = (object) $xmlResponse->data;
+    $this->questiontext = $data->questiontext;
     $this->image = "";
-    if (isset($xmlResponse->data->image)) {
-      $this->image = $xmlResponse->data->image;
+    if (isset($data->image)) {
+      $this->image = $data->image;
     } 
 
     if (!$this->options->remotegrade) {
       // Grading is to be done by the Moodle server, extract and store 
       // the grading information from the xmlResponse.
-      $this->calculatedanswers = $xmlResponse->data->answers;
+      $this->calculatedanswers = $data->answers;
       $ansid_arr     = array();
       $answer_arr    = array();
       $tolerance_arr = array();
@@ -70,6 +71,11 @@ class qtype_remoteprocessed_question extends question_graded_automatically {
       $step->set_qt_var('_answer', implode("@", $answer_arr));
       $step->set_qt_var('_ansid', implode("@", $ansid_arr));
       $step->set_qt_var('_tolerance', implode("@", $tolerance_arr));
+    } else {
+      if (isset($data->workspace)) {
+        $this->workspace = $data->workspace;
+        $step->set_qt_var('_workspace', $this->workspace);
+      }
     }
 
     $step->set_qt_var('_image', $this->image);
@@ -97,7 +103,13 @@ class qtype_remoteprocessed_question extends question_graded_automatically {
       }
 
       $this->calculatedanswers = $answers;
+    } else {
+      $workspace = $step->get_qt_var('_workspace');
+      if (isset($workspace)) {
+        $this->workspace = $workspace;
+      }
     }
+
   }
 
   public static $options_keys =
@@ -204,7 +216,18 @@ class qtype_remoteprocessed_question extends question_graded_automatically {
   }
 
   public function find_matching_answerid_remotely($value) {
-    // TODO
+    $request = $this->question_grading_xmlrpc_request_args($value);
+    $xmlResponse = xmlrpc_request($request);
+    if (!$xmlResponse->success) {
+      print "<br/><b>Error grading question.</b><br/>";
+      print $xmlResponse->warning;
+    }
+
+    $answerids = $xmlResponse->data;
+    if (count($answerids)) {
+      return $answerids[0];
+    }
+
     return 0;
   }
 
@@ -256,6 +279,29 @@ class qtype_remoteprocessed_question extends question_graded_automatically {
     return (object) array('server' => $this->options->server->url,
                           'method' => 'processquestion', 
 		                      'args'   => $request);
+  }
+
+  private function question_grading_xmlrpc_request_args($value) {
+    $request = array();
+    $request['workspace'] = $this->workspace;
+    $request['studentans'] = $value;
+
+    $answers = array();
+
+    foreach ($this->options->answers as $answer) {
+       array_push($answers,
+       array(
+        'ansid'     => $answer->id,
+        'answer'    => $answer->answer,
+        'tolerance' => $answer->tolerance));
+    }
+      
+    $request['answers'] = $answers;
+    $request['numanswers'] = count($answers);
+
+    return (object) array('server' => $this->options->server->url,
+                          'method' => 'grade',
+                          'args'   => $request);
   }
 
   // Some utility functions.
