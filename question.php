@@ -201,12 +201,8 @@ class qtype_remoteprocessed_question extends question_graded_automatically {
     // Check the DB to see if we've already graded and stored the matching
     // answer id for this response.  This saves extra roundtrips with the
     // server.
-    error_log("load_answer_grade");
-    print "<br>load_answer_grade<br>";
     $saved_grade = $this->load_saved_grade($value);
-    print_r($saved_grade);
     if ($saved_grade) {
-      error_log($saved_grade->answer);
       return $saved_grade->answer;
     }
 
@@ -291,7 +287,6 @@ class qtype_remoteprocessed_question extends question_graded_automatically {
   }
 
   public function find_matching_answerid_remotely($value) {
-    error_log("find_matching_answerid_remotely [" . $value . "]");
     // See if we've saved a matching answer id in the db.
     $answerid = $this->load_answer_grade($value);
     if ($answerid >= 0) {
@@ -302,7 +297,6 @@ class qtype_remoteprocessed_question extends question_graded_automatically {
     // answerid.
     $request = $this->question_grading_xmlrpc_request_args($value);
     $xmlResponse = xmlrpc_request($request);
-    error_log("xmlrpc_request back");
     if (!$xmlResponse->success) {
       print "<br/><b>Error grading question.</b><br/>";
       print $xmlResponse->warning;

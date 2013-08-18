@@ -55,6 +55,7 @@ class qtype_remoteprocessed extends question_type {
       $question_array = array('question' => $questionid);
       $DB->delete_records('question_rmtproc', $question_array);
       $DB->delete_records('question_rmtproc_answers', $question_array);
+      $DB->delete_records('question_rmtproc_attempt', $question_array);
 
       parent::delete_question($questionid, $contextid);
     }
