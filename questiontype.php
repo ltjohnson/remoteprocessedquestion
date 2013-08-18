@@ -167,7 +167,7 @@ class qtype_remoteprocessed extends question_type {
       
    if (!empty($oldremoteanswers)) {
 	   foreach ($oldremoteanswers as $ora) {
-	    $DB->delte_records("question_rmtproc_answers",  
+	    $DB->delete_records("question_rmtproc_answers",  
 			     array("id" => $ora->id));
 	   }
     }

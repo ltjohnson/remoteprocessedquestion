@@ -35,6 +35,8 @@ require_once(dirname(__FILE__) . '/locallib.php');
 class qtype_remoteprocessed_question extends question_graded_automatically {
 
   public function start_attempt(question_attempt_step $step, $variant) {
+    $this->attemptid = $step->get_id();
+
     $request = $this->question_initialization_xmlrpc_request_args();
     $xmlResponse = xmlrpc_request($request);
     if (!$xmlResponse->success) {
@@ -83,6 +85,8 @@ class qtype_remoteprocessed_question extends question_graded_automatically {
   }
 
   public function apply_attempt_state(question_attempt_step $step) {
+    $this->attemptid = $step->get_id();
+
     $this->questiontext = $step->get_qt_var('_questiontext');
     $this->image = $step->get_qt_var('_image');
 
@@ -109,7 +113,6 @@ class qtype_remoteprocessed_question extends question_graded_automatically {
         $this->workspace = $workspace;
       }
     }
-
   }
 
   public static $options_keys =
@@ -165,11 +168,83 @@ class qtype_remoteprocessed_question extends question_graded_automatically {
     }
   }
 
+  public function load_saved_grade($value) {
+    GLOBAL $DB;
+
+    $saved_grade = array(
+      'question' => $this->id,
+      'attempt'  => $this->attemptid,
+      'value'    => trim($value),
+      );
+
+    $row = $DB->get_records_sql("
+      SELECT
+        qra.*
+      FROM
+        {question_rmtproc_attempt} qra
+      WHERE
+        qra.question = ?
+      AND 
+        qra.attempt = ?
+      AND " . $DB->sql_compare_text('qra.value', 1024) . ' = ' . 
+        $DB->sql_compare_text('?', 1024),
+      $saved_grade);
+
+    if ($row) {
+      return array_shift($row);
+    }
+
+    return null;
+  }
+
+  public function load_answer_grade($value) {
+    // Check the DB to see if we've already graded and stored the matching
+    // answer id for this response.  This saves extra roundtrips with the
+    // server.
+    error_log("load_answer_grade");
+    print "<br>load_answer_grade<br>";
+    $saved_grade = $this->load_saved_grade($value);
+    print_r($saved_grade);
+    if ($saved_grade) {
+      error_log($saved_grade->answer);
+      return $saved_grade->answer;
+    }
+
+    return -1;
+  }
+
+  public function save_answer_grade($value, $answerid) {
+    // Save an answer id associated with a value in the DB.
+    GLOBAL $DB;
+
+    if (!isset($this->attemptid)) {
+      return;
+    } 
+
+    $graded_value = array(
+      'question' => $this->id,
+      'attempt' => $this->attemptid, 
+      'value'   => trim($value),
+      );
+    $saved_grade = $this->load_saved_grade($value);
+    if (!$saved_grade) {
+      $graded_value['answer'] = $answerid;
+      $DB->insert_record("question_rmtproc_attempt", (object) $graded_value);
+    } else {
+      $saved_grade->answer = $answerid;
+      $DB->update_record("question_rmtproc_attempt", $saved_grade);
+    }
+  }
+
   public function get_matching_answer_id(array $response) {
     $value = $response['answer'];
 
     if (is_null($value) || $value == '') {
       return 0;
+    }
+
+    if (isset($this->graded) and trim($value) == $this->graded->value) {
+      return $this->graded->answerid;
     }
 
     $remotegrade = isset($this->options->remotegrade) && 
@@ -216,19 +291,33 @@ class qtype_remoteprocessed_question extends question_graded_automatically {
   }
 
   public function find_matching_answerid_remotely($value) {
+    error_log("find_matching_answerid_remotely [" . $value . "]");
+    // See if we've saved a matching answer id in the db.
+    $answerid = $this->load_answer_grade($value);
+    if ($answerid >= 0) {
+      return $answerid;
+    }
+
+    // Answer id not found for this value, grade remotely and save that
+    // answerid.
     $request = $this->question_grading_xmlrpc_request_args($value);
     $xmlResponse = xmlrpc_request($request);
+    error_log("xmlrpc_request back");
     if (!$xmlResponse->success) {
       print "<br/><b>Error grading question.</b><br/>";
       print $xmlResponse->warning;
     }
 
-    $answerids = $xmlResponse->data;
-    if (count($answerids)) {
-      return $answerids[0];
+    $answers = $xmlResponse->data;
+    if (count($answers)) {
+      $answerid = $answers[0];
+    } else {
+      $answerid = 0;
     }
 
-    return 0;
+    $this->save_answer_grade($value, $answerid);
+
+    return $answerid;
   }
 
   public function get_matching_answer(array $response) {

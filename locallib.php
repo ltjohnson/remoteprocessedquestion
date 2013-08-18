@@ -81,6 +81,7 @@ function do_rpc_call($url, $request) {
  *    * 'data' a php version of the response if the request was successful.
  */
 function xmlrpc_request($request_args) {
+  print "<br>Got xmlrpc_request for method " . $request_args->method . "<br>";
   $request  = xmlrpc_encode_request($request_args->method, $request_args->args);
   $response = do_rpc_call($request_args->server, $request);
   $response->data = xmlrpc_decode($response->data);
