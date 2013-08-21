@@ -39,6 +39,133 @@ require_once($CFG->dirroot . '/question/type/remoteprocessed/question.php');
  */
 class qtype_remoteprocessed extends question_type {
 
+  /**
+   * If your question type has a table that extends the question table, and
+   * you want the base class to automatically save, backup and restore the extra fields,
+   * override this method to return an array wherer the first element is the table name,
+   * and the subsequent entries are the column names (apart from id and questionid).
+   *
+   * @return mixed array as above, or null to tell the base class to do nothing.
+   */
+  public function extra_question_fields() {
+    return array('question_rmtproc', 'variables', 'imagecode', 'remotegrade');
+  }
+
+    /**
+     * If you use extra_question_fields, overload this function to return question id field name
+     *  in case you table use another name for this column
+     */
+    public function questionid_column_name() {
+        return 'question';
+    }
+
+    /**
+     * If your question type has a table that extends the question_answers table,
+     * make this method return an array wherer the first element is the table name,
+     * and the subsequent entries are the column names (apart from id and answerid).
+     *
+     * @return mixed array as above, or null to tell the base class to do nothing.
+     */
+    public function extra_answer_fields() {
+      return array('question_rmtproc_answers', 'tolerance');
+    }
+
+    /*
+     * Export question to the Moodle XML format
+     *
+     * Export question using information from extra_question_fields function
+     * If some of you fields contains id's you'll need to reimplement this
+     */
+    public function export_to_xml($question, qformat_xml $format, $extra=null) {
+        $output = parent::export_to_xml($question, $format, $extra);
+       
+        // Export server information.
+
+        $id = $format->xml_escape($question->options->server->id);
+        $servername = $format->xml_escape($question->options->server->name);
+        $serverurl = $format->xml_escape($question->options->server->url);
+        $output .= "    <server>\n";
+        $output .= "        <id>{$id}</id>\n";
+        $output .= "        <servername>{$servername}</servername>\n";
+        $output .= "        <serverurl>{$serverurl}</serverurl>\n";
+        $output .= "    </server>\n";
+
+        return $output;
+    }
+
+  public function convert_old_xml_format($data, qformat_xml $format) {
+    if (!array_key_exists('remoteprocessed', $data['#'])) {
+      return $data;
+    }
+
+    $remoteprocessed = array_shift($data['#']['remoteprocessed']);
+    $value_map = array(
+      'answer'      => 'answers',
+      'server'      => 'server',
+      'imagecode'   => 'imagecode',
+      'variables'   => 'variables',
+      'remotegrade' => 'remotegrade',
+      );
+    foreach ($value_map as $key => $value) {
+      $data['#'][$key] = 
+        $format->getpath($remoteprocessed, array('#', $value), '');
+    }
+
+    return $data;
+  }
+
+  public function find_or_insert_server($id, $name, $url) {
+    GLOBAL $DB;
+
+    // See if there is an existing record matching this url, if so, return that.
+    $server = $DB->get_record("question_rmtproc_servers",
+      array('url' => $url));
+    if ($server) {
+      return $server;
+    }
+
+    $server = new stdClass;
+    $server->name = "IMPORTED " . $name;
+    $server->url = $url;
+    $server->id = $DB->insert_record("question_rmtproc_servers", $server);
+
+    return $server;
+  }
+
+  public function import_from_xml($data, $question, qformat_xml $format, 
+    $extra=null) {
+    // Convert old xml format to new xml format.
+    error_log('import_from_xml');
+    error_log(implode(',', array_keys($data['#'])));
+
+    if (array_key_exists('remoteprocessed', $data['#'])) {
+      $data = $this->convert_old_xml_format($data, $format);
+    }
+
+    // Now process the question.
+    $qo = parent::import_from_xml($data, $question, $format, $extra);
+
+    // Find the server field.
+    $server = $data['#']['server'];
+
+    $serverid = $format->getpath($server, array('#', 'id', 0, '#'), '');
+    $servername = 
+      $format->getpath($server, array('#', 'servername', 0, '#'), '');
+    $serverurl = 
+      $format->getpath($server, array('#', 'serverurl', 0, '#'), '');
+    print_r($server);
+    print_r($serverid);
+    print_r($servername);
+    print_r($serverurl);
+
+    $server = $this->find_or_insert_server($serverid, $servername, $serverurl);
+
+    $qo->serverid = $server->id;
+    $qo->server = $server;
+
+    return $qo;
+  }
+
   public function move_files($questionid, $oldcontextid, $newcontextid) {
     parent::move_files($questionid, $oldcontextid, $newcontextid);
     $this->move_files_in_hints($questionid, $oldcontextid, $newcontextid);
