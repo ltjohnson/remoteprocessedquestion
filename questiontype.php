@@ -48,7 +48,8 @@ class qtype_remoteprocessed extends question_type {
    * @return mixed array as above, or null to tell the base class to do nothing.
    */
   public function extra_question_fields() {
-    return array('question_rmtproc', 'variables', 'imagecode', 'remotegrade');
+    return array('question_rmtproc', 'variables', 'imagecode', 'remotegrade', 
+                 'serverid');
   }
 
     /**
@@ -124,9 +125,8 @@ class qtype_remoteprocessed extends question_type {
       return $server;
     }
 
-    $server = new stdClass;
-    $server->name = "IMPORTED " . $name;
-    $server->url = $url;
+    $server = (object) array("name" => "IMPORTED " . $name, 
+                             "url"  => $url);
     $server->id = $DB->insert_record("question_rmtproc_servers", $server);
 
     return $server;
@@ -148,15 +148,12 @@ class qtype_remoteprocessed extends question_type {
     // Find the server field.
     $server = $data['#']['server'];
 
-    $serverid = $format->getpath($server, array('#', 'id', 0, '#'), '');
+    $serverid = 
+      $format->getpath($server, array('#', 'id', 0, '#'), '');
     $servername = 
       $format->getpath($server, array('#', 'servername', 0, '#'), '');
     $serverurl = 
       $format->getpath($server, array('#', 'serverurl', 0, '#'), '');
-    print_r($server);
-    print_r($serverid);
-    print_r($servername);
-    print_r($serverurl);
 
     $server = $this->find_or_insert_server($serverid, $servername, $serverurl);
 
@@ -188,33 +185,36 @@ class qtype_remoteprocessed extends question_type {
     }
 
     public function save_question_options($question) {
-      GLOBAL $DB;
+      global $DB;
       
-      $context = $question->context;
+     //  $context = $question->context;
 
-      $this->save_hints($question);
+     //  $this->save_hints($question);
       
-      $update = true;
-      $options = $DB->get_record("question_rmtproc", 
-				 array("question" => $question->id));
-      if (!$options) {
-	       $update = false;
-	       $options = qtype_remoteprocessed_question::default_options();
-	       $options->question = $question->id;
-      }
+     //  $update = true;
+     //  $options = $DB->get_record("question_rmtproc", 
+				 // array("question" => $question->id));
+     //  if (!$options) {
+	    //    $update = false;
+	    //    $options = qtype_remoteprocessed_question::default_options();
+	    //    $options->question = $question->id;
+     //  }
       
-      foreach (qtype_remoteprocessed_question::$options_keys as $key) {
-	     if (isset($question->{$key})) {
-	       $options->{$key} = $question->{$key};
-	     }
-      }
+     //  foreach (qtype_remoteprocessed_question::$options_keys as $key) {
+	    //  if (isset($question->{$key})) {
+	    //    $options->{$key} = $question->{$key};
+	    //  }
+     //  }
 
-      if ($update) {
-	       $DB->update_record('question_rmtproc', $options);
-      } else {
-	       $DB->insert_record('question_rmtproc', $options);
-      }
-      
+     //  if ($update) {
+	    //    $DB->update_record('question_rmtproc', $options);
+     //  } else {
+	    //    $DB->insert_record('question_rmtproc', $options);
+     //  }
+      // Use parent function, it automatically takes care of the extra question 
+      // fields.
+      parent::save_question_options($question);
+
       // Now save the question answers.  Answer data is mixed between two 
       // tables.
       //
@@ -231,7 +231,7 @@ class qtype_remoteprocessed extends question_type {
 				     'id ASC');
       $oldremoteanswers = $DB->get_records('question_rmtproc_answers',
 					   array('question' => $question->id),
-					   'answer ASC');
+					   'answerid ASC');
       
       if (!isset($question->answers)) {
 	       $question->answers = array();
@@ -274,7 +274,7 @@ class qtype_remoteprocessed extends question_type {
 	     } 
 	
 	     $rp_answer->question  = $question->id;
-	     $rp_answer->answer    = $answer->id;
+	     $rp_answer->answerid  = $answer->id;
 	     $rp_answer->tolerance = trim($question->tolerance[$key]);
 	
 	     if (isset($rp_answer->id)) {
@@ -302,35 +302,20 @@ class qtype_remoteprocessed extends question_type {
   }
     
     public function get_question_options($question) {
-      GLOBAL $DB;
-      
-      $question->options = $DB->get_record("question_rmtproc", 
-					   array("question" => $question->id));
+      global $DB;
 
-      if (!$question->options) {
-	     $question->options = qtype_remoteprocessed_question::default_options();
-      }
-      
-      if ($question->options->serverid != 0) {
-	       $question->options->server =
-	       $DB->get_record("question_rmtproc_servers",
-			  array("id" => $question->options->serverid));
-      }
-      
-      $question->options->answers = $DB->get_records_sql("
-        SELECT 
-          qa.*,
-          qra.tolerance
-        FROM
-          {question_answers} qa, {question_rmtproc_answers} qra
-        WHERE
-          qa.question = ?
-        AND
-          qa.id = qra.answer", array("question" => $question->id));
-      if (!$question->options->answers) {
+      // Most of the work is done by the parent function.
+      $value = parent::get_question_options($question);
+      if ($value === false) {
         return false;
       }
-      
+
+      // We need to load the server info, the parent function
+      // only finds the serverid.
+      $question->options->server = 
+        $DB->get_record("question_rmtproc_servers", 
+          array("id" => $question->options->serverid));
+
       return true;
     }
 

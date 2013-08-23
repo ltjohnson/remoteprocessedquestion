@@ -20,7 +20,6 @@
  * @package    qtype
  * @subpackage remoteprocessed
  * @copyright  2013 Leif Johnson (leif.t.johnson@gmail.com)
-
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -95,6 +94,9 @@ class qtype_remoteprocessed_edit_form extends question_edit_form {
     }
 
     protected function data_preprocessing($question) {
+      print_r($question);
+      print "<br/>";
+      print_r($question);
       $question = parent::data_preprocessing($question);
       $question = $this->data_preprocessing_answers($question);
       $question = $this->data_preprocessing_hints($question);

@@ -8,11 +8,11 @@
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" 
                SEQUENCE="true" ENUM="false" COMMENT="id of the table" 
                NEXT="name"/>
-	<FIELD NAME="name" TYPE="char" LENGTH="255" NOTNULL="true" 
+        <FIELD NAME="name" TYPE="char" LENGTH="255" NOTNULL="true" 
                SEQUENCE="false" ENUM="false" 
                COMMENT="Display name of the server" PREVIOUS="id" 
                NEXT="url"/>
-	<FIELD NAME="url" TYPE="char" LENGTH="511" NOTNULL="true" 
+        <FIELD NAME="url" TYPE="char" LENGTH="511" NOTNULL="true" 
                SEQUENCE="false" ENUM="false" COMMENT="URL of server" 
                PREVIOUS="name"/>
       </FIELDS>
@@ -22,7 +22,7 @@
       </KEYS>
     </TABLE>
     <TABLE NAME="question_rmtproc" 
-           COMMENT="Question templates for Remote Processed Questions" 
+           COMMENT="Extra question fields for Remote Processed Questions" 
            PREVIOUS="question_rmtproc_servers" 
            NEXT="question_rmtproc_answers">
       <FIELDS>
@@ -45,26 +45,26 @@
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id" 
-	     COMMENT="primary key of the table" NEXT="question"/>	
+	        COMMENT="primary key of the table" NEXT="question"/>	
         <KEY NAME="question" TYPE="foreign" FIELDS="question" 
-	     REFTABLE="questions" REFFIELDS="id" PREVIOUS="primary" 
-	     NEXT="serverid"/> 
+	        REFTABLE="questions" REFFIELDS="id" PREVIOUS="primary" 
+	        NEXT="serverid"/> 
         <KEY NAME="serverid" TYPE="foreign" FIELDS="serverid" 
-	     REFTABLE="question_rmtproc_servers" REFFIELDS="id" 
-	     PREVIOUS="question"/> 
+	        REFTABLE="question_rmtproc_servers" REFFIELDS="id" 
+	        PREVIOUS="question"/> 
       </KEYS>
     </TABLE>
     <TABLE NAME="question_rmtproc_answers" 
-	   COMMENT="Extra fields for answers for remoteprocessed questions" 
-	   PREVIOUS="question_rmtproc">
+	   COMMENT="Extra answer fields for remoteprocessed questions" 
+	   PREVIOUS="question_rmtproc" NEXT="question_rmtproc_attempt">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" 
 	       SEQUENCE="true" ENUM="false" COMMENT="id of the table" 
 	       NEXT="question"/>
         <FIELD NAME="question" TYPE="int" LENGTH="10" NOTNULL="true" 
 	       UNSIGNED="true" SEQUENCE="false" ENUM="false" PREVIOUS="id" 
-	       NEXT="answer"/>
-        <FIELD NAME="answer" TYPE="int" LENGTH="10" NOTNULL="true" 
+	       NEXT="answerid"/>
+        <FIELD NAME="answerid" TYPE="int" LENGTH="10" NOTNULL="true" 
 	       UNSIGNED="true" SEQUENCE="false" ENUM="false" 
 	       PREVIOUS="question" NEXT="tolerance"/>
         <FIELD NAME="tolerance" TYPE="char" LENGTH="255" NOTNULL="true" 
@@ -72,12 +72,44 @@
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id" 
-	     COMMENT="primary key of the table" NEXT="question"/>	
+	        COMMENT="primary key of the table" NEXT="question"/>	
         <KEY NAME="question" TYPE="foreign" FIELDS="question" 
-	     REFTABLE="questions" REFFIELDS="id" PREVIOUS="primary" 
-	     NEXT="answer"/> 
+	        REFTABLE="questions" REFFIELDS="id" PREVIOUS="primary" 
+	        NEXT="answer"/> 
         <KEY NAME="answer" TYPE="foreign" FIELDS="answer" 
-	     REFTABLE="question_answers" REFFIELDS="id" PREVIOUS="question"/> 
+	        REFTABLE="question_answers" REFFIELDS="id" PREVIOUS="question"/> 
+      </KEYS>
+    </TABLE>
+    <TABLE NAME="question_rmtproc_attempt" 
+           COMMENT="Graded values with matching answer ids, by attempt." 
+           PREVIOUS="question_rmtproc_answers">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" 
+               SEQUENCE="true" ENUM="false" COMMENT="id of the table" 
+               NEXT="name"/>
+        <FIELD NAME="attempt" TYPE="int" LENGTH="10" NOTNULL="true" 
+               SEQUENCE="false" ENUM="false" 
+               COMMENT="question attempt id" PREVIOUS="id" 
+               NEXT="question"/>
+        <FIELD NAME="question" TYPE="int" LENGTH="10" NOTNULL="true" 
+               SEQUENCE="false" ENUM="false" COMMENT="question id" 
+               PREVIOUS="attempt" NEXT="answer"/>
+        <FIELD NAME="answer" TYPE="int" LENGTH="10" NOTNULL="true"
+          SEQUENCE="false" ENUM="false" COMMENT="question answer id matching graded value."
+          PREVIOUS="question" NEXT="value">
+        <FIELD NAME="value" TYPE="text" NOTNULL="true" SEQUENCE="false" 
+          ENUM="false" COMMENT="Graded value" PREVIOUS="answer">
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id" 
+             COMMENT="primary key of the table"/> 
+        <KEY NAME="question" TYPE="foreign" FIELDS="question" 
+          REFTABLE="questions" REFFIELDS="id" PREVIOUS="primary" 
+          NEXT="answer"/> 
+        <KEY NAME="answer" TYPE="foreign" FIELDS="answer" 
+          REFTABLE="question_answers" REFFIELDS="id" PREVIOUS="question"/> 
+        <KEY NAME="attempt" TYPE="foreign" FIELDS="attempt" 
+          REFTABLE="question_attempts" REFFIELDS="id" PREVIOUS="question"/> 
       </KEYS>
     </TABLE>
   </TABLES>
