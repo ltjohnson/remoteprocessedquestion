@@ -101,22 +101,47 @@ class qtype_remoteprocessed extends question_type {
 
     $remoteprocessed = array_shift($data['#']['remoteprocessed']);
     $value_map = array(
-      // We handle answers manually below.
+      // Answers are handled manually below.
       'server'      => 'server',
       'imagecode'   => 'imagecode',
       'variables'   => 'variables',
       'remotegrade' => 'remotegrade',
       );
-    print "In convert_old_xml_format<br>";
     foreach ($value_map as $key => $value) {
       $data['#'][$key] = 
         $format->getpath($remoteprocessed, array('#', $value), '');
     }
+    $data['#']['answer'] = array();
 
-    $answers = $remoteprocessed['#']['answers'];
-    $data['#']['answer'] = $answer[0];
+    $converted = (object) array('data' => $data);
+    $converted->answers        = array();
+    $converted->fraction       = array();
+    $converted->tolerance      = array();
+    $converted->feedback       = array();
 
-    return $data;
+    $old_answers = $remoteprocessed['#']['answers'];
+    foreach ($old_answers as $ans) {
+      $ans = $ans['#'];
+      array_push($converted->answers, 
+        $format->getpath($ans, array('answer', 0, '#', 'answer', 0, '#'), ''));
+      array_push($converted->tolerance, 
+        $format->getpath($ans, array('tolerance', 0, '#', 'tolerance', 0, '#'), 
+                         0.0));
+      array_push($converted->fraction, 
+        $format->getpath($ans, array('fraction', 0, '#', 'fraction', 0, '#'), 
+                         0.0));
+      $feedback = array(
+        'text' => $format->getpath($ans, array('feedback', 0, '#', 'feedback', 
+                                               0, '#'), 
+                                   ''),
+        'format' => $format->getpath($ans, array('feedbackformat', 0, '#', 
+                                                 'feedbackformat', 0, '#'), 
+                                     1)
+        );
+      array_push($converted->feedback, $feedback);
+    }
+
+    return $converted;
   }
 
   public function find_or_insert_server($id, $name, $url) {
@@ -139,15 +164,21 @@ class qtype_remoteprocessed extends question_type {
   public function import_from_xml($data, $question, qformat_xml $format, 
     $extra=null) {
     // Convert old xml format to new xml format.
-    error_log('import_from_xml');
-    error_log(implode(',', array_keys($data['#'])));
 
     if (array_key_exists('remoteprocessed', $data['#'])) {
-      $data = $this->convert_old_xml_format($data, $format);
+      $converted = $this->convert_old_xml_format($data, $format);
+      $data = $converted->data;
     }
 
     // Now process the question.
     $qo = parent::import_from_xml($data, $question, $format, $extra);
+
+    if (isset($converted)) {
+      $qo->answers        = $converted->answers;
+      $qo->tolerance      = $converted->tolerance;
+      $qo->feedback       = $converted->feedback;
+      $qo->fraction       = $converted->fraction;
+    }
 
     // Find the server field.
     $server = $data['#']['server'];
@@ -190,6 +221,7 @@ class qtype_remoteprocessed extends question_type {
 
     public function save_question_options($question) {
       global $DB;
+      $context = $question->context;
 
       // Parent function saves options, but not answers.
       parent::save_question_options($question);
@@ -215,9 +247,6 @@ class qtype_remoteprocessed extends question_type {
       if (!isset($question->answers)) {
 	       $question->answers = array();
       }
-
-      print "Saving question answers.<br>Got " . count($question->answers) .
-        " answers.<br>";
 
       foreach ($question->answers as $key => $answerdata) {
 	       if (is_array($answerdata)) {
@@ -245,8 +274,6 @@ class qtype_remoteprocessed extends question_type {
 				      $context, 'question', 'answerfeedback', 
 				      $answer->id);
 	     $answer->feedbackformat = $question->feedback[$key]['format'];
-       print "<br>Saving answer<br>";
-       print_r($answer);
 	
 	     $DB->update_record("question_answers", $answer);
 
@@ -260,8 +287,6 @@ class qtype_remoteprocessed extends question_type {
 	     $rp_answer->question  = $question->id;
 	     $rp_answer->answerid  = $answer->id;
 	     $rp_answer->tolerance = trim($question->tolerance[$key]);
-       print "<br>Saving additional info<br>";
-       print_r($rp_answer);
 	
 	     if (isset($rp_answer->id)) {
 	       $DB->update_record("question_rmtproc_answers", $rp_answer);
