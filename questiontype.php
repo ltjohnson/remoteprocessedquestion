@@ -101,22 +101,26 @@ class qtype_remoteprocessed extends question_type {
 
     $remoteprocessed = array_shift($data['#']['remoteprocessed']);
     $value_map = array(
-      'answer'      => 'answers',
+      // We handle answers manually below.
       'server'      => 'server',
       'imagecode'   => 'imagecode',
       'variables'   => 'variables',
       'remotegrade' => 'remotegrade',
       );
+    print "In convert_old_xml_format<br>";
     foreach ($value_map as $key => $value) {
       $data['#'][$key] = 
         $format->getpath($remoteprocessed, array('#', $value), '');
     }
 
+    $answers = $remoteprocessed['#']['answers'];
+    $data['#']['answer'] = $answer[0];
+
     return $data;
   }
 
   public function find_or_insert_server($id, $name, $url) {
-    GLOBAL $DB;
+    global $DB;
 
     // See if there is an existing record matching this url, if so, return that.
     $server = $DB->get_record("question_rmtproc_servers",
@@ -149,11 +153,11 @@ class qtype_remoteprocessed extends question_type {
     $server = $data['#']['server'];
 
     $serverid = 
-      $format->getpath($server, array('#', 'id', 0, '#'), '');
+      $format->getpath($server, array(0, '#', 'id', 0, '#'), '');
     $servername = 
-      $format->getpath($server, array('#', 'servername', 0, '#'), '');
+      $format->getpath($server, array(0, '#', 'servername', 0, '#'), '');
     $serverurl = 
-      $format->getpath($server, array('#', 'serverurl', 0, '#'), '');
+      $format->getpath($server, array(0, '#', 'serverurl', 0, '#'), '');
 
     $server = $this->find_or_insert_server($serverid, $servername, $serverurl);
 
@@ -186,33 +190,8 @@ class qtype_remoteprocessed extends question_type {
 
     public function save_question_options($question) {
       global $DB;
-      
-     //  $context = $question->context;
 
-     //  $this->save_hints($question);
-      
-     //  $update = true;
-     //  $options = $DB->get_record("question_rmtproc", 
-				 // array("question" => $question->id));
-     //  if (!$options) {
-	    //    $update = false;
-	    //    $options = qtype_remoteprocessed_question::default_options();
-	    //    $options->question = $question->id;
-     //  }
-      
-     //  foreach (qtype_remoteprocessed_question::$options_keys as $key) {
-	    //  if (isset($question->{$key})) {
-	    //    $options->{$key} = $question->{$key};
-	    //  }
-     //  }
-
-     //  if ($update) {
-	    //    $DB->update_record('question_rmtproc', $options);
-     //  } else {
-	    //    $DB->insert_record('question_rmtproc', $options);
-     //  }
-      // Use parent function, it automatically takes care of the extra question 
-      // fields.
+      // Parent function saves options, but not answers.
       parent::save_question_options($question);
 
       // Now save the question answers.  Answer data is mixed between two 
@@ -236,6 +215,9 @@ class qtype_remoteprocessed extends question_type {
       if (!isset($question->answers)) {
 	       $question->answers = array();
       }
+
+      print "Saving question answers.<br>Got " . count($question->answers) .
+        " answers.<br>";
 
       foreach ($question->answers as $key => $answerdata) {
 	       if (is_array($answerdata)) {
@@ -263,6 +245,8 @@ class qtype_remoteprocessed extends question_type {
 				      $context, 'question', 'answerfeedback', 
 				      $answer->id);
 	     $answer->feedbackformat = $question->feedback[$key]['format'];
+       print "<br>Saving answer<br>";
+       print_r($answer);
 	
 	     $DB->update_record("question_answers", $answer);
 
@@ -276,12 +260,14 @@ class qtype_remoteprocessed extends question_type {
 	     $rp_answer->question  = $question->id;
 	     $rp_answer->answerid  = $answer->id;
 	     $rp_answer->tolerance = trim($question->tolerance[$key]);
+       print "<br>Saving additional info<br>";
+       print_r($rp_answer);
 	
 	     if (isset($rp_answer->id)) {
 	       $DB->update_record("question_rmtproc_answers", $rp_answer);
 	     } else {
 	       $rp_answer->id = 
-	       $DB->insert_record("question_rmtproc_answers", $rp_answer);
+	         $DB->insert_record("question_rmtproc_answers", $rp_answer);
 	     }
 	
       }

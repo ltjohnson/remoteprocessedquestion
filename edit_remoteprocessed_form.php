@@ -94,17 +94,14 @@ class qtype_remoteprocessed_edit_form extends question_edit_form {
     }
 
     protected function data_preprocessing($question) {
-      print_r($question);
-      print "<br/>";
-      print_r($question);
       $question = parent::data_preprocessing($question);
       $question = $this->data_preprocessing_answers($question);
       $question = $this->data_preprocessing_hints($question);
 	
       foreach (qtype_remoteprocessed_question::$options_keys as $key) {
-	if (isset($question->options->{$key})) {
-	  $question->{$key} = $question->options->{$key};
-	}
+        if (isset($question->options->{$key})) {
+          $question->{$key} = $question->options->{$key};
+        }
       }
 
       return $question;
@@ -113,7 +110,7 @@ class qtype_remoteprocessed_edit_form extends question_edit_form {
     protected function data_preprocessing_answers($question, $withanswerfiles = false) {
       $question = parent::data_preprocessing_answers($question, $withanswerfiles);
       if (empty($question->options->answers)) {
-	return $question;
+        return $question;
       }
 
       $key = 0;
