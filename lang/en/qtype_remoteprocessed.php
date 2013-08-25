@@ -35,7 +35,7 @@ $string['server']       = 'Server';
 $string['remotegrade']  = 'Remote Grade';
 $string['remotegrade_help'] = 'If checked, grading is done on the remote server.  If un-checked, grading is done on the Moodle server.  For anything other than simple numerical grading, submitted answer within the interval (answer ± tolerance), remote grading is necessary.';
 
-$string['pluginname'] = 'remoteprocessed';
+$string['pluginname'] = 'Remote Processed';
 $string['pluginname_help'] = 'Create a question type with components processed by remote servers.';
 $string['pluginname_link'] = 'question/type/remoteprocessed';
 $string['pluginnameadding'] = 'Adding a remoteprocessed question';

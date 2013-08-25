@@ -28,7 +28,7 @@ defined('MOODLE_INTERNAL') || die();
 
 require_once($CFG->libdir  . '/questionlib.php');
 require_once($CFG->dirroot . '/question/type/remoteprocessed/question.php');
-
+require_once(dirname(__FILE__) . '/serverlib.php');
 
 /**
  * The remoteprocessed question type.
@@ -311,7 +311,7 @@ class qtype_remoteprocessed extends question_type {
       // We need to load the server info, the parent function
       // only finds the serverid.
       $question->options->server = 
-        qtype_remote_prcessed_server_helper::load_server_by_id(
+        qtype_remoteprocessed_server_helper::load_server_by_id(
           $question->options->serverid);
 
       return true;
