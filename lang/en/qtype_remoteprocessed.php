@@ -43,5 +43,10 @@ $string['pluginnameediting'] = 'Editing a remoteprocessed question';
 $string['pluginnamesummary'] = 'A remoteprocessed question type which allows the definition of questions where some components of the question are processed with a remote server.  This allows linking in functionality that may not be appropriate for integrating directly into Moodle.';
 
 // Strings used for the server management and editing pages.
-$string['editserver_title']  = "Edit Server for Remote Processed Questions";
-$string['editserver_navbar'] = "RP Question Server";
+$string['editserver_addserver'] = 'Add a new server';
+$string['editserver_configured_servers'] = 'Configured Servers';
+$string['editserver_configured_servers_help'] = 'Add, test, edit and delete servers.';
+$string['editserver_navbar'] = 'RP Question Server';
+$string['editserver_testserver'] = 'Get Server Status';
+$string['editserver_title']  = 'Edit Server for Remote Processed Questions';
+$string['editserver_usagecount'] = '{$a->name} (Used by {$a->count} questions)';
