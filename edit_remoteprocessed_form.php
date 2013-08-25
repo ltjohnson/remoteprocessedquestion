@@ -54,10 +54,12 @@ class qtype_remoteprocessed_edit_form extends question_edit_form {
 			      array('rows' =>15, 'cols' => 80)),
 	'imagecode');
       
+      $server_menu = 
+        qtype_remoteprocessed_server_helper::get_remote_processed_servers_menu());
       $mform->insertElementBefore(
         $mform->createElement('select', 'serverid', 
             get_string('server', 'qtype_remoteprocessed'),
-            qtype_remoteprocessed::get_remote_processed_servers_menu()),
+            $server_menu,
 	  'variables');
 
       $mform->addElement(

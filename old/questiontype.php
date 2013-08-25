@@ -15,6 +15,7 @@
  */
 
 require_once(dirname(__FILE__) . '/locallib.php');
+require_once(dirname(__FILE__) . '/serverlib.php');
 class ltjprocessed_qtype extends default_questiontype
 {
 

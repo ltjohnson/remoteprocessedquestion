@@ -27,7 +27,6 @@
 defined('MOODLE_INTERNAL') || die();
 
 require_once($CFG->libdir  . '/questionlib.php');
-//require_once($CFG->dirroot . '/question/engine/lib.php');
 require_once($CFG->dirroot . '/question/type/remoteprocessed/question.php');
 
 
@@ -145,22 +144,7 @@ class qtype_remoteprocessed extends question_type {
     return $converted;
   }
 
-  public function find_or_insert_server($id, $name, $url) {
-    global $DB;
-
-    // See if there is an existing record matching this url, if so, return that.
-    $server = $DB->get_record("question_rmtproc_servers",
-      array('url' => $url));
-    if ($server) {
-      return $server;
-    }
-
-    $server = (object) array("name" => "IMPORTED " . $name, 
-                             "url"  => $url);
-    $server->id = $DB->insert_record("question_rmtproc_servers", $server);
-
-    return $server;
-  }
+  
 
   public function import_from_xml($data, $question, qformat_xml $format, 
     $extra=null) {
@@ -191,7 +175,9 @@ class qtype_remoteprocessed extends question_type {
     $serverurl = 
       $format->getpath($server, array(0, '#', 'serverurl', 0, '#'), '');
 
-    $server = $this->find_or_insert_server($serverid, $servername, $serverurl);
+    $server = 
+      qtype_remoteprocessed_server_helper::find_or_insert_server_by_url(
+        $serverid, $servername, $serverurl);
 
     $qo->serverid = $server->id;
     $qo->server = $server;
@@ -325,8 +311,8 @@ class qtype_remoteprocessed extends question_type {
       // We need to load the server info, the parent function
       // only finds the serverid.
       $question->options->server = 
-        $DB->get_record("question_rmtproc_servers", 
-          array("id" => $question->options->serverid));
+        qtype_remote_prcessed_server_helper::load_server_by_id(
+          $question->options->serverid);
 
       return true;
     }
@@ -347,15 +333,5 @@ class qtype_remoteprocessed extends question_type {
         return array();
     }
 
-    /* 
-     * Get a menu of available remote processing servers.
-     */
-    public static function get_remote_processed_servers_menu() {
-      GLOBAL $DB;
-      $menu = $DB->get_records_menu('question_rmtproc_servers',
-				    null,
-				    'id ASC',
-				    'id,name');
-      return $menu;
-    }
+    
 }

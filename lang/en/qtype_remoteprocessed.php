@@ -20,7 +20,6 @@
  * @package    qtype
  * @subpackage remoteprocessed
  * @copyright  2013 Leif Johnson (leif.t.johnson@gmail.com)
-
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 $string['answerformula']       = 'Answer {$a} formula';
@@ -42,3 +41,7 @@ $string['pluginname_link'] = 'question/type/remoteprocessed';
 $string['pluginnameadding'] = 'Adding a remoteprocessed question';
 $string['pluginnameediting'] = 'Editing a remoteprocessed question';
 $string['pluginnamesummary'] = 'A remoteprocessed question type which allows the definition of questions where some components of the question are processed with a remote server.  This allows linking in functionality that may not be appropriate for integrating directly into Moodle.';
+
+// Strings used for the server management and editing pages.
+$string['editserver_title']  = "Edit Server for Remote Processed Questions";
+$string['editserver_navbar'] = "RP Question Server";
