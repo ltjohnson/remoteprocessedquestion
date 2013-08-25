@@ -57,6 +57,7 @@ class qtype_remoteprocessed extends question_type {
      *  in case you table use another name for this column
      */
     public function questionid_column_name() {
+      return 'questionid';
         return 'question';
     }
 
@@ -211,7 +212,7 @@ class qtype_remoteprocessed extends question_type {
     public function delete_question($questionid, $contextid) {
       global $DB;
       
-      $question_array = array('question' => $questionid);
+      $question_array = array($this->questionid_column_name() => $questionid);
       $DB->delete_records('question_rmtproc', $question_array);
       $DB->delete_records('question_rmtproc_answers', $question_array);
       $DB->delete_records('question_rmtproc_attempt', $question_array);
@@ -241,7 +242,7 @@ class qtype_remoteprocessed extends question_type {
 				     array('question' => $question->id),
 				     'id ASC');
       $oldremoteanswers = $DB->get_records('question_rmtproc_answers',
-					   array('question' => $question->id),
+					   array('questionid' => $question->id),
 					   'answerid ASC');
       
       if (!isset($question->answers)) {
@@ -266,7 +267,7 @@ class qtype_remoteprocessed extends question_type {
 	       $answer->id = $DB->insert_record('question_answers', $answer);
 	     }
 	
-	     $answer->answer = $answerdata;
+	     $answer->answer   = $answerdata;
 	     $answer->question = $question->id;
 	     $answer->fraction = $question->fraction[$key];
 	     $answer->feedback = 
@@ -284,9 +285,9 @@ class qtype_remoteprocessed extends question_type {
 	         qtype_remoteprocessed_question::default_remoteprocessed_answer();
 	     } 
 	
-	     $rp_answer->question  = $question->id;
-	     $rp_answer->answerid  = $answer->id;
-	     $rp_answer->tolerance = trim($question->tolerance[$key]);
+	     $rp_answer->questionid  = $question->id;
+	     $rp_answer->answerid    = $answer->id;
+	     $rp_answer->tolerance   = trim($question->tolerance[$key]);
 	
 	     if (isset($rp_answer->id)) {
 	       $DB->update_record("question_rmtproc_answers", $rp_answer);

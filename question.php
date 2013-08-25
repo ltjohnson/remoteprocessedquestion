@@ -172,9 +172,9 @@ class qtype_remoteprocessed_question extends question_graded_automatically {
     GLOBAL $DB;
 
     $saved_grade = array(
-      'question' => $this->id,
-      'attempt'  => $this->attemptid,
-      'value'    => trim($value),
+      'questionid' => $this->id,
+      'attempt'   => $this->attemptid,
+      'value'     => trim($value),
       );
 
     $row = $DB->get_records_sql("
@@ -183,7 +183,7 @@ class qtype_remoteprocessed_question extends question_graded_automatically {
       FROM
         {question_rmtproc_attempt} qra
       WHERE
-        qra.question = ?
+        qra.questionid = ?
       AND 
         qra.attempt = ?
       AND " . $DB->sql_compare_text('qra.value', 1024) . ' = ' . 
@@ -218,9 +218,9 @@ class qtype_remoteprocessed_question extends question_graded_automatically {
     } 
 
     $graded_value = array(
-      'question' => $this->id,
-      'attempt' => $this->attemptid, 
-      'value'   => trim($value),
+      'questionid' => $this->id,
+      'attempt'    => $this->attemptid, 
+      'value'      => trim($value),
       );
     $saved_grade = $this->load_saved_grade($value);
     if (!$saved_grade) {
