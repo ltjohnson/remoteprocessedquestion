@@ -85,16 +85,19 @@ function xmlrpc_request($request_args) {
   $response = do_rpc_call($request_args->server, $request);
   $response->data = xmlrpc_decode($response->data);
   $response->success = $response->success &&
-    !array_key_exists('faultCode', $response->data);
+    (is_array($response->data) && 
+      !array_key_exists('faultCode', $response->data));
   if (!$response->success) {
     // Not quite done looking for errors yet, we need to see if 
     // a faultcode was sent back
-    if (array_key_exists('faultCode', $response->data)) {
-      $response->warning = "Error processing question: </br>".
-	       "faultCode[". $response->data['faultCode'] . "] </br>".
-	       "faultString[". $response->data['faultString'] . "] </br>";
+    if (is_array($response->data) && 
+        array_key_exists('faultCode', $response->data)) {
+      $response->warning = "Error processing question: <br>".
+	       "faultCode[". $response->data['faultCode'] . "] <br>".
+	       "faultString[". $response->data['faultString'] . "] <br>";
     } else {
-      $response->warning = "Unknown error processing question.</br>";
+      $response->warning = "Unknown error processing question.<br>" .
+        $response->warning . "<br>";
     }
     $response->data = NULL;
   } else {

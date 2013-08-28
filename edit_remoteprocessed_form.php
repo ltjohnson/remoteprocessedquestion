@@ -34,7 +34,6 @@ require_once($CFG->dirroot . '/question/type/remoteprocessed/questiontype.php');
  * remoteprocessed question editing form definition.
  *
  * @copyright  2013 Leif Johnson (leif.t.johnson@gmail.com)
-
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class qtype_remoteprocessed_edit_form extends question_edit_form {

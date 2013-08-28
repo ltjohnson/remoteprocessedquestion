@@ -57,3 +57,8 @@ $string['editserver_serverurl'] = 'Remote Server URL';
 $string['editserver_serverurl_missing'] = 'The url of the server.';
 $string['editserver_testserver'] = 'Get Server Status';
 $string['editserver_title']  = 'Edit Remote Processed Questions Server';
+
+$string['testserver_needserverid'] = 'No server specified.';
+$string['testserver_testserver'] = 'Test a Remote Processing Server';
+$string['testserver_testserver_help'] = 'Issue a RPC call to check the status of a remote processing server';
+$string['testserver_unknownserver'] = 'Unknown server.';
