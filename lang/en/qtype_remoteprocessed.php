@@ -48,6 +48,7 @@ $string['editserver_configured_servers'] = 'Configured Servers';
 $string['editserver_configured_servers_help'] = 'Add, test, edit and delete servers.';
 $string['editserver_deleteconf'] = 'Are you sure you wish to delete the server, {$a}?';
 $string['editserver_navbar'] = 'RP Question Server';
+$string['editserver_noservers'] = 'There are no installed servers.';
 $string['editserver_servercantbedeleted'] = 'Server can\'t be deleted.  There are questions using this server.';
 $string['editserver_servername'] = 'Server Name';
 $string['editserver_servername_missing'] = 'This is the name used to refer to this server when writing questions.';
