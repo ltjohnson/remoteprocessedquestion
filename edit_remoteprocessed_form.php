@@ -78,6 +78,7 @@ class qtype_remoteprocessed_edit_form extends question_edit_form {
 
     protected function get_per_answer_fields($mform, $label, $gradeoptions,
             &$repeatedoptions, &$answersoption) {
+      global $CFG;
         $repeated = parent::get_per_answer_fields($mform, $label, $gradeoptions,
                 $repeatedoptions, $answersoption);
 
@@ -86,10 +87,17 @@ class qtype_remoteprocessed_edit_form extends question_edit_form {
 	   array('size' => 30));
         $repeatedoptions['tolerance']['type'] = PARAM_TEXT;
         $repeatedoptions['tolerance']['default'] = "0.0";
-        $elements = $repeated[0]->getElements();
-        $elements[0]->setSize(30);
-        array_splice($elements, 1, 0, array($tolerance));
-        $repeated[0]->setElements($elements);
+        if ($CFG->version >= '2013051400') {
+          // Moodle 2.5 and up.
+          $elements = $repeated[0]->getElements();
+          $elements[0]->setSize(30);
+          array_splice($elements, 1, 0, array($tolerance));
+          $repeated[0]->setElements($elements);
+        } else {
+          // To work with Moodle 2.4, not tested for earlier versions.
+          array_splice($repeated, 3, 0, array($tolerance));
+          $repeated[1]->setSize(30);
+        }
 
         return $repeated;
     }
