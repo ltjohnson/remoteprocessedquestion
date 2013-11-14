@@ -55,9 +55,11 @@ $string['editserver_servername_missing'] = 'This is the name used to refer to th
 $string['editserver_servername_unused'] = '{$a->name} (Unused)';
 $string['editserver_servername_usagecount'] = '{$a->name} (Used by {$a->count} questions)';
 $string['editserver_serverurl'] = 'Remote Server URL';
-$string['editserver_serverurl_missing'] = 'The url of the server.';
+$string['editserver_serverurl_missing'] = 'The url of the server, e.g. "localhost:8080".';
 $string['editserver_testserver'] = 'Get Server Status';
-$string['editserver_title']  = 'Edit Remote Processed Questions Server';
+$string['editserver_title'] = 'Edit Remote Processed Questions Server';
+$string['editserver_title_help'] = 'Short hand name for the server.  It will be used for pull down selectors seen by administrators and instructors, but not students.';
+
 
 $string['testserver_needserverid'] = 'No server specified.';
 $string['testserver_testserver'] = 'Test a Remote Processing Server';

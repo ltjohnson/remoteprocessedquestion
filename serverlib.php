@@ -69,19 +69,22 @@ class qtype_remoteprocessed_server_helper {
 
     return $server_ret;
   }
+
   public static function get_server_values($serverid) {
-  	// If serverid is passed, get the values from the DB, otherwise return
-  	// default values.
-  	global $DB;
+    // If serverid is passed, get the values from the DB, otherwise return
+    // default values.
+    global $DB;
 
-  	$server = (object) array('name' => '', 'url' => '');
+    if (isset($serverid) && $serverid > 0) {
+      $server = $DB->get_record('question_rmtproc_servers',
+				array('id' => $serverid));
+    }
 
-  	if (isset($serverid)) {
-  		$server = $DB->get_record('question_rmtproc_servers',
-  			                      array('id' => $serverid));
-  	}
+    if (!isset($server)) {
+      $server = (object) array('name' => '', 'url' => '', 'id' => 0);
+    }
 
-  	return $server;
+    return $server;
   }
 
   public static function delete($serverid) {
